@@ -1,11 +1,12 @@
-use rusty_chip::Config;
 use std::env;
 use std::process;
+
+mod chip8_gui;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let config = Config::new(&args).unwrap_or_else(|err| {
+    let config = chip8_gui::Config::new(&args).unwrap_or_else(|err| {
         eprintln!("Problem with arguments: {}", err);
         process::exit(1);
     });
