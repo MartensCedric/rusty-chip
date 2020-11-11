@@ -1,4 +1,6 @@
 pub struct chip8 {
+
+    // We should break this into cohesive components
     memory: [u8;4096],
     cpu_registers: [u8;16],
     index_register: u16,
@@ -6,6 +8,10 @@ pub struct chip8 {
     gfx: [u8; 64 * 32],
     delay_timer: u8,
     sound_timer: u8,
+    stack:stack,
+    stack_data:[u16;16],
+    sp : u16,
+    key_states:u8, 
 }
 
 impl chip8 {
