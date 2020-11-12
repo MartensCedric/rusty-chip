@@ -15,12 +15,40 @@ pub struct chip8 {
 }
 
 impl chip8 {
-    pub fn execute_instruction(opcode: u8, arg1: u8, arg2: u8, arg3: u8) {}
 
-    pub mod opcodes {
-        use super::*;
-        mod tests {
-            use super::*;
+    pub fn new() -> chip8 {
+        chip8
+        {
         }
     }
+
+    pub fn execute_instruction(opcode: u32) {}
+
+    pub mod opcodes {
+
+        use super::*;
+
+        // 7XNN
+        // Adds NN to VX. (Carry flag is not changed)
+        // Panics if first nibble is not empty
+        pub fn add(registerX: u8, valueNN : u8)
+        {
+            if(registerX >= 16)
+                panic!("Register X out of bounds. Value : {}", registerX);
+
+            cpu_registers[register] += valueNN;
+        }
+
+    }
+}
+
+#[cfg(test)]
+mod tests{
+
+    #[test]
+    pub fn add_test()
+    {
+        assert_eq!(2, 2);
+    }
+
 }
