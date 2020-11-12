@@ -1,6 +1,7 @@
 use std::env;
 use std::process;
 
+mod chip8;
 mod chip8_gui;
 
 fn main() {
@@ -12,4 +13,13 @@ fn main() {
     });
 
     println!("Hello, world!");
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_test() {
+        assert_eq!(3, 3);
+    }
 }
