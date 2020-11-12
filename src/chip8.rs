@@ -1,7 +1,7 @@
 pub struct chip8 {
     // We should break this into cohesive components
     memory: [u8; 4096],
-    cpu_registers: [u8; 16],
+    pub cpu_registers: [u8; 16],
     index_register: u16,
     program_counter: u16,
     gfx: [u8; 64 * 32],
@@ -46,6 +46,21 @@ mod tests {
     use super::*;
     #[test]
     pub fn add_test() {
-        assert_eq!(2, 2);
+        let mut c: chip8 = chip8::new();
+        c.add(10 as u8, 12 as u8);
+        assert_eq!(c.cpu_registers[10 as usize], 12);
+
+        c.add(10 as u8, 3 as u8);
+        assert_eq!(c.cpu_registers[10 as usize], 15);
+
+        c.add(4 as u8, 3 as u8);
+        assert_eq!(c.cpu_registers[4 as usize], 3);
+    }
+
+    #[test]
+    #[should_panic]
+    pub fn add_test_oob() {
+        let mut c: chip8 = chip8::new();
+        c.add(16 as u8, 12 as u8);
     }
 }
