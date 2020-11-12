@@ -33,11 +33,11 @@ impl chip8 {
     // 7XNN
     // Adds NN to VX. (Carry flag is not changed)
     // Panics if first nibble is not empty
-    fn add(self, registerX: u8, valueNN: u8) {
-        if registerX >= 16 {
-            panic!("Register X out of bounds. Value : {}", registerX);
+    fn add(&mut self, register_x: u8, value_NN: u8) {
+        if register_x >= 16 {
+            panic!("Register X out of bounds. Value : {}", register_x);
         }
-        self.cpu_registers[registerX] += valueNN;
+        self.cpu_registers[register_x as usize] += value_NN;
     }
 }
 
