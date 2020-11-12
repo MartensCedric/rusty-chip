@@ -9,7 +9,7 @@ pub struct chip8 {
     sound_timer: u8,
     stack_data: [u16; 16],
     sp: u16,
-    key_states: u8,
+    key_states: [u8; 16],
 }
 
 impl chip8 {
@@ -24,7 +24,7 @@ impl chip8 {
             sound_timer: 0,
             stack_data: [0; 16],
             sp: 0,
-            key_states: 0,
+            key_states: [0; 16],
         }
     }
 
