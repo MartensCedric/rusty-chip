@@ -30,7 +30,15 @@ impl chip8 {
         }
     }
 
-    pub fn execute_instruction(opcode: u16) {}
+    // Executes the given opcode
+    pub fn execute_instruction(&mut self, opcode: u16) {
+        match opcode & 0xF000 {
+            0xA000 => self.set_i(opcode & 0x0FFF),
+            _ => {
+                panic!("Unknown opcode!");
+            }
+        }
+    }
 
     // ANNN
     // Sets I to the address NNN.
@@ -56,6 +64,20 @@ impl chip8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    pub fn annn_opcode_test() {
+        let mut c: chip8 = chip8::new();
+        c.execute_instruction(0xA123);
+        assert_eq!(c.index_register, 0x0123);
+    }
+
+    #[test]
+    #[should_panic]
+    pub fn bad_opcode_test() {
+        let mut c: chip8 = chip8::new();
+        c.execute_instruction(0x69);
+    }
 
     #[test]
     pub fn set_i_test() {
