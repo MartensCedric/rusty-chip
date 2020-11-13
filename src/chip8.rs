@@ -24,7 +24,7 @@ impl chip8 {
             sound_timer: 0,
             stack_data: [0; 16],
             sp: 0,
-            key_states: [0; 16],
+            key_states: 0,
         }
     }
 
