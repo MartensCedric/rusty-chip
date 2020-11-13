@@ -20,7 +20,7 @@ impl chip8 {
             cpu_registers: [0; 16],
             opcode: 0,
             index_register: 0,
-            program_counter: 0x200,
+            program_counter: 0x200, // CHIP8 expects PC to start at 0x200
             gfx: [0; 64 * 32],
             delay_timer: 0,
             sound_timer: 0,
@@ -31,6 +31,12 @@ impl chip8 {
     }
 
     pub fn execute_instruction(opcode: u16) {}
+
+    // ANNN
+    // Sets I to the address NNN.
+    fn set_i(&mut self, value_nnn: u16) {
+        self.index_register = 0x0FFF & value_nnn;
+    }
 
     // 7XNN
     // Adds NN to VX. (Carry flag is not changed)
@@ -50,6 +56,13 @@ impl chip8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    pub fn set_i_test() {
+        let mut c: chip8 = chip8::new();
+        c.set_i(100 as u16);
+        assert_eq!(c.index_register, 100);
+    }
 
     #[test]
     pub fn add_test() {
