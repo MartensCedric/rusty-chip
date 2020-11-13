@@ -2,6 +2,7 @@ pub struct chip8 {
     // We should break this into cohesive components
     memory: [u8; 4096],
     pub cpu_registers: [u8; 16],
+    opcode: u8,
     index_register: u16,
     program_counter: u16,
     gfx: [u8; 64 * 32],
@@ -17,8 +18,9 @@ impl chip8 {
         chip8 {
             memory: [0; 4096],
             cpu_registers: [0; 16],
+            opcode: 0,
             index_register: 0,
-            program_counter: 0,
+            program_counter: 0x200,
             gfx: [0; 64 * 32],
             delay_timer: 0,
             sound_timer: 0,
@@ -27,6 +29,8 @@ impl chip8 {
             key_states: [0; 16],
         }
     }
+
+    fn execution_cycle() {}
 
     pub fn execute_instruction(opcode: u32) {}
 
