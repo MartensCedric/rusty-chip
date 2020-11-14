@@ -1,3 +1,6 @@
+use rand::Rng;
+use ux::*;
+
 pub struct Chip8 {
     // We should break this into cohesive components
     memory: [u8; 4096],
@@ -31,6 +34,8 @@ impl Chip8 {
     }
 
     // Executes the given opcode
+    // TODO: complete this to handle every single opcode and call
+    // the correct assosiated function
     pub fn execute_instruction(&mut self, opcode: u16) {
         match opcode & 0xF000 {
             0xA000 => self.set_i(opcode & 0x0FFF),
@@ -50,6 +55,14 @@ impl Chip8 {
     // Jumps to the address NNN plus V0..
     fn jump_to(&mut self, value_nnn: u16) {
         self.program_counter = (0x0FFF & value_nnn) + (self.cpu_registers[0] as u16);
+    }
+
+    // CXNN
+    // Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+    fn set_rand(&mut self, index: u8, value_nn: u8) {
+        let mut rng = rand::thread_rng();
+        let random_num: u8 = rng.gen();
+        self.cpu_registers[index as usize] = value_nn & random_num;
     }
 
     // 7XNN
@@ -98,6 +111,12 @@ mod tests {
         let mut c: Chip8 = Chip8::new();
         c.set_i(100 as u16);
         assert_eq!(c.index_register, 100);
+    }
+
+    #[test]
+    pub fn set_rand_test() {
+        let mut c: Chip8 = Chip8::new();
+        // I don't fucking know how to test this...
     }
 
     #[test]
