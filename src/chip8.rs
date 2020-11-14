@@ -48,7 +48,7 @@ impl Chip8 {
 
     // BNNN
     // Jumps to the address NNN plus V0..
-    fn bnnn(&mut self, value_nnn: u16) {
+    fn jump_to(&mut self, value_nnn: u16) {
         self.program_counter = (0x0FFF & value_nnn) + (self.cpu_registers[0] as u16);
     }
 
@@ -86,10 +86,10 @@ mod tests {
     }
 
     #[test]
-    pub fn bnnn_test() {
+    pub fn jump_to_test() {
         let mut c: Chip8 = Chip8::new();
         c.cpu_registers[0] = 0x69;
-        c.bnnn(0x0123);
+        c.jump_to(0x0123);
         assert_eq!(c.program_counter, 0x0123 + 0x69);
     }
 
