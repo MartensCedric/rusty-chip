@@ -33,7 +33,17 @@ impl Chip8 {
         }
     }
 
+    pub fn fetch_cycle(&mut self) {
+        // fetch opcode
+        // essentially combine PC: u8 and PC+1: u8 into one u16 opcode to execute using bitshift ops
+        let opcode: u16 = (self.memory[self.program_counter as usize] as u16) << 8
+            | self.memory[(self.program_counter + 1) as usize] as u16;
+        // execute opcode
+        self.execute_instruction(opcode);
+    }
+
     // Executes the given opcode
+    // Includes decoding and executing the given opcode
     // TODO: complete this to handle every single opcode and call
     // the correct assosiated function
     pub fn execute_instruction(&mut self, opcode: u16) {
@@ -89,6 +99,16 @@ impl Chip8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    pub fn fetch_cycle_test() {
+        let mut c: Chip8 = Chip8::new();
+        c.memory[c.program_counter as usize] = 0xA2;
+        c.memory[(c.program_counter + 1) as usize] = 0xF0;
+        // should execute OPCODE A2F0
+        c.fetch_cycle();
+        assert_eq!(c.index_register, 0x02F0);
+    }
 
     #[test]
     pub fn clear_screen_test() {
