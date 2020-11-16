@@ -45,6 +45,12 @@ impl Chip8 {
         }
     }
 
+    // 00E0
+    // Clears the screen.
+    fn clear_screen(&mut self) {
+        self.gfx = [0; 64 * 32];
+    }
+
     // ANNN
     // Sets I to the address NNN.
     fn set_i(&mut self, value_nnn: u16) {
@@ -83,6 +89,14 @@ impl Chip8 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    pub fn clear_screen_test() {
+        let mut c: Chip8 = Chip8::new();
+        c.gfx[0] = 1;
+        c.clear_screen();
+        assert_eq!(c.gfx, [0; 64 * 32]);
+    }
 
     #[test]
     pub fn annn_opcode_test() {
