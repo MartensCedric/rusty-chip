@@ -105,9 +105,14 @@ impl Chip8 {
         let reg_x_val: u8 = self.cpu_registers[reg_x];
         let reg_y_val: u8 = self.cpu_registers[reg_y];
 
-        // TODO: Determine when there's a carry bit. Keep in mind that I think there is negative
-        // numbers in this emulator.
         self.cpu_registers[reg_x] += reg_y_val;
+
+        let final_val: usize = self.cpu_registers[reg_x] as usize;
+        if final_val < reg_x || final_val < reg_y {
+            self.cpu_registers[0xF] = 1;
+        } else {
+            self.cpu_registers[0xF] = 0;
+        }
     }
 
     // 8XY5
@@ -190,18 +195,26 @@ mod tests {
     #[test]
     pub fn add_registers_test() {
         let mut c: Chip8 = Chip8::new();
-        c.cpu_registers[0 as usize] = 4;
-        c.cpu_registers[2 as usize] = 3;
-        c.cpu_registers[4 as usize] = 3;
-        c.cpu_registers[5 as usize] = 1;
-        c.cpu_registers[6 as usize] = 0xFFFF;
+        c.cpu_registers[0] = 4;
+        c.cpu_registers[2] = 3;
+        c.cpu_registers[4] = 3;
+        c.cpu_registers[5] = 1;
+        c.cpu_registers[6] = 0xFFFF;
+
+        assert_eq!(c.cpu_registers[0xF], 0);
 
         c.add_registers(0, 2);
-        assert_eq!(c.cpu_registers[0 as usize], 7);
-        assert_eq!(c.cpu_registers[2 as usize], 2);
+        assert_eq!(c.cpu_registers[0], 7);
+        assert_eq!(c.cpu_registers[2], 2);
+        assert_eq!(c.cpu_registers[0xF], 0);
 
         c.add_registers(6, 5);
-        // TODO : Make a test that will trigger the carry bit
+        assert_eq!(c.cpu_registers[6], 0);
+        assert_eq!(c.cpu_registers[0xF], 1);
+
+        c.add_registers(6, 5);
+        assert_eq!(c.cpu_registers[6], 1);
+        assert_eq!(c.cpu_registers[0xF], 0);
     }
 
     #[test]
@@ -211,18 +224,18 @@ mod tests {
     #[test]
     pub fn bit_or_test() {
         let mut c: Chip8 = Chip8::new();
-        c.cpu_registers[0 as usize] = 4;
-        c.cpu_registers[2 as usize] = 3;
-        c.cpu_registers[4 as usize] = 3;
-        c.cpu_registers[5 as usize] = 1;
+        c.cpu_registers[0] = 4;
+        c.cpu_registers[2] = 3;
+        c.cpu_registers[4] = 3;
+        c.cpu_registers[5] = 1;
 
         c.bit_or(2 as u8, 0 as u8);
-        assert_eq!(c.cpu_registers[2 as usize], 7);
+        assert_eq!(c.cpu_registers[2], 7);
 
         c.bit_or(3 as u8, 4 as u8);
-        assert_eq!(c.cpu_registers[3 as usize], 3);
+        assert_eq!(c.cpu_registers[3], 3);
 
         c.bit_or(5 as u8, 4 as u8);
-        assert_eq!(c.cpu_registers[5 as usize], 3);
+        assert_eq!(c.cpu_registers[5], 3);
     }
 }
