@@ -1,5 +1,4 @@
 use rand::Rng;
-use ux::*;
 
 pub struct Chip8 {
     // We should break this into cohesive components
@@ -48,7 +47,7 @@ impl Chip8 {
     // the correct assosiated function
     pub fn execute_instruction(&mut self, opcode: u16) {
         match opcode & 0xF000 {
-            0xA000 => self.set_i(opcode & 0x0FFF),
+            0xA000 => self.set_index_register(opcode & 0x0FFF),
             _ => {
                 panic!("Unknown opcode!");
             }
@@ -63,7 +62,7 @@ impl Chip8 {
 
     // ANNN
     // Sets I to the address NNN.
-    fn set_i(&mut self, value_nnn: u16) {
+    fn set_index_register(&mut self, value_nnn: u16) {
         self.index_register = 0x0FFF & value_nnn;
     }
 
@@ -85,15 +84,24 @@ impl Chip8 {
     // Adds NN to VX. (Carry flag is not changed)
     // Panics if registerX is out of bounds
     fn add(&mut self, register_x: u8, value_nn: u8) {
-        self.cpu_registers[register_x as usize] += value_nn;
+        self.cpu_registers[(register_x & 0x0F) as usize] += value_nn;
     }
 
     // 8XY1
     // Sets VX to VX or VY. (Bitwise OR operation)
     // Panics if registers are out of bounds
     fn bit_or(&mut self, register_x: u8, register_y: u8) {
-        self.cpu_registers[register_x as usize] |= self.cpu_registers[register_y as usize];
+        self.cpu_registers[(register_x & 0xF) as usize] |=
+            self.cpu_registers[(register_y & 0xF) as usize];
     }
+
+    // 8XY4
+    // Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
+    fn add_registers(&mut self, register_x: u8, register_y: u8) {}
+
+    // 8XY5
+    // Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
+    fn sub_registers(&mut self, register_x: u8, register_y: u8) {}
 }
 
 #[cfg(test)]
