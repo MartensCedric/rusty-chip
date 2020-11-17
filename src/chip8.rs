@@ -199,7 +199,7 @@ mod tests {
         c.cpu_registers[2] = 3;
         c.cpu_registers[4] = 3;
         c.cpu_registers[5] = 1;
-        c.cpu_registers[6] = 0xFFFF;
+        c.cpu_registers[6] = 0xFF;
 
         assert_eq!(c.cpu_registers[0xF], 0);
 
