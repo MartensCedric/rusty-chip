@@ -91,16 +91,27 @@ impl Chip8 {
     // Sets VX to VX or VY. (Bitwise OR operation)
     // Panics if registers are out of bounds
     fn bit_or(&mut self, register_x: u8, register_y: u8) {
-        self.cpu_registers[(register_x & 0xF) as usize] |=
-            self.cpu_registers[(register_y & 0xF) as usize];
+        let reg_x = (register_x & 0xF) as usize;
+        let reg_y = (register_y & 0xF) as usize;
+        self.cpu_registers[reg_x] |= self.cpu_registers[reg_y];
     }
 
     // 8XY4
     // Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
-    fn add_registers(&mut self, register_x: u8, register_y: u8) {}
+    fn add_registers(&mut self, register_x: u8, register_y: u8) {
+        let reg_x = (register_x & 0xF) as usize;
+        let reg_y = (register_y & 0xF) as usize;
+
+        let reg_x_val: u8 = self.cpu_registers[reg_x];
+        let reg_y_val: u8 = self.cpu_registers[reg_y];
+
+        // TODO: Determine when there's a carry bit. Keep in mind that I think there is negative
+        // numbers in this emulator.
+        self.cpu_registers[reg_x] += reg_y_val;
+    }
 
     // 8XY5
-    // Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
+    // VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
     fn sub_registers(&mut self, register_x: u8, register_y: u8) {}
 }
 
@@ -146,12 +157,14 @@ mod tests {
         c.cpu_registers[0] = 0x69;
         c.jump_to(0x0123);
         assert_eq!(c.program_counter, 0x0123 + 0x69);
+        c.jump_to(0x0433);
+        assert_eq!(c.program_counter, 0x0433 + 0x69);
     }
 
     #[test]
-    pub fn set_i_test() {
+    pub fn set_index_register_test() {
         let mut c: Chip8 = Chip8::new();
-        c.set_i(100 as u16);
+        c.set_index_register(100 as u16);
         assert_eq!(c.index_register, 100);
     }
 
@@ -173,6 +186,27 @@ mod tests {
         c.add(4 as u8, 3 as u8);
         assert_eq!(c.cpu_registers[4 as usize], 3);
     }
+
+    #[test]
+    pub fn add_registers_test() {
+        let mut c: Chip8 = Chip8::new();
+        c.cpu_registers[0 as usize] = 4;
+        c.cpu_registers[2 as usize] = 3;
+        c.cpu_registers[4 as usize] = 3;
+        c.cpu_registers[5 as usize] = 1;
+        c.cpu_registers[6 as usize] = 0xFFFF;
+
+        c.add_registers(0, 2);
+        assert_eq!(c.cpu_registers[0 as usize], 7);
+        assert_eq!(c.cpu_registers[2 as usize], 2);
+
+        c.add_registers(6, 5);
+        // TODO : Make a test that will trigger the carry bit
+    }
+
+    #[test]
+    #[ignore]
+    pub fn sub_registers_test() {}
 
     #[test]
     pub fn bit_or_test() {
