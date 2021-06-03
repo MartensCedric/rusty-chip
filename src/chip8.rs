@@ -139,7 +139,17 @@ mod tests {
         let mut c: Chip8 = Chip8::new();
         c.gfx[0] = 1;
         c.clear_screen();
-        assert_eq!(c.gfx, [0; 64 * 32]);
+
+        let expected_gfx = [0; 64 * 32];
+        assert_eq!(
+            c.gfx.len(),
+            expected_gfx.len(),
+            "Arrays don't have the same length"
+        );
+        assert!(
+            c.gfx.iter().zip(expected_gfx.iter()).all(|(a, b)| a == b),
+            "Arrays are not equal"
+        );
     }
 
     #[test]
