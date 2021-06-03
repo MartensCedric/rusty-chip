@@ -108,16 +108,30 @@ impl Chip8 {
         let result: u16 = self.cpu_registers[reg_x] as u16 + reg_y_val;
         self.cpu_registers[reg_x] = result as u8;
 
-        if (result as u8) < (reg_x_val as u8) {
-            self.cpu_registers[0xF] = 1;
+        self.cpu_registers[0xF] = if (result as u8) < (reg_x_val as u8) {
+            1
         } else {
-            self.cpu_registers[0xF] = 0;
-        }
+            0
+        };
     }
 
     // 8XY5
     // VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
-    fn sub_registers(&mut self, register_x: u8, register_y: u8) {}
+    fn sub_registers(&mut self, register_x: u8, register_y: u8) {
+        let reg_x = (register_x & 0xF) as usize;
+        let reg_y = (register_y & 0xF) as usize;
+
+        let reg_x_val: u16 = self.cpu_registers[reg_x] as u16;
+        let reg_y_val: u16 = self.cpu_registers[reg_y] as u16;
+
+        if reg_x_val < reg_y_val {
+            self.cpu_registers[0xF] = 0;
+            self.cpu_registers[reg_x] -= reg_y_val as u8;
+        } else {
+            self.cpu_registers[0xF] = 1;
+            self.cpu_registers[reg_x] -= reg_y_val as u8;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -211,7 +225,7 @@ mod tests {
         c.cpu_registers[5] = 1;
         c.cpu_registers[6] = 0xFF;
 
-        assert_eq!(c.cpu_registers[0xF], 0);
+        assert_eq!(c.cpu_registers[0xF], 0); // todo: remove this eager test
 
         c.add_registers(0, 2);
         assert_eq!(c.cpu_registers[0], 7);
@@ -229,7 +243,21 @@ mod tests {
 
     #[test]
     #[ignore]
-    pub fn sub_registers_test() {}
+    pub fn sub_registers_test() {
+        let mut c: Chip8 = Chip8::new();
+        c.cpu_registers[0] = 4;
+        c.cpu_registers[2] = 3;
+        c.cpu_registers[4] = 3;
+        c.cpu_registers[5] = 1;
+        c.cpu_registers[6] = 0xFF;
+
+        c.sub_registers(0, 2);
+        assert_eq!(c.cpu_registers[0], 1);
+        assert_eq!(c.cpu_registers[2], 3);
+        assert_eq!(c.cpu_registers[0xF], 1);
+
+        // todo: handle more conditions
+    }
 
     #[test]
     pub fn bit_or_test() {
