@@ -102,13 +102,13 @@ impl Chip8 {
         let reg_x = (register_x & 0xF) as usize;
         let reg_y = (register_y & 0xF) as usize;
 
-        let reg_x_val: u8 = self.cpu_registers[reg_x];
-        let reg_y_val: u8 = self.cpu_registers[reg_y];
+        let reg_x_val: u16 = self.cpu_registers[reg_x] as u16;
+        let reg_y_val: u16 = self.cpu_registers[reg_y] as u16;
 
-        self.cpu_registers[reg_x] += reg_y_val;
+        let result: u16 = self.cpu_registers[reg_x] as u16 + reg_y_val;
+        self.cpu_registers[reg_x] = result as u8;
 
-        let final_val: usize = self.cpu_registers[reg_x] as usize;
-        if final_val < reg_x || final_val < reg_y {
+        if (result as u8) < (reg_x_val as u8) {
             self.cpu_registers[0xF] = 1;
         } else {
             self.cpu_registers[0xF] = 0;
@@ -215,7 +215,7 @@ mod tests {
 
         c.add_registers(0, 2);
         assert_eq!(c.cpu_registers[0], 7);
-        assert_eq!(c.cpu_registers[2], 2);
+        assert_eq!(c.cpu_registers[2], 3);
         assert_eq!(c.cpu_registers[0xF], 0);
 
         c.add_registers(6, 5);
