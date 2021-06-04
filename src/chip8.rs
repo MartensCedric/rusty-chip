@@ -1,3 +1,5 @@
+use num::CheckedAdd;
+use num::CheckedSub;
 use rand::Rng;
 
 pub struct Chip8 {
@@ -98,38 +100,47 @@ impl Chip8 {
 
     // 8XY4
     // Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
-    fn add_registers(&mut self, register_x: u8, register_y: u8) {
-        let reg_x = (register_x & 0xF) as usize;
-        let reg_y = (register_y & 0xF) as usize;
+    fn add_registers(&mut self, register_x: usize, register_y: usize) {
+        let reg_x = register_x & 0xF;
+        let reg_y = register_y & 0xF;
 
-        let reg_x_val: u16 = self.cpu_registers[reg_x] as u16;
-        let reg_y_val: u16 = self.cpu_registers[reg_y] as u16;
+        let reg_x_val: u8 = self.cpu_registers[reg_x];
+        let reg_y_val: u8 = self.cpu_registers[reg_y];
 
-        let result: u16 = self.cpu_registers[reg_x] as u16 + reg_y_val;
-        self.cpu_registers[reg_x] = result as u8;
+        let result = CheckedAdd::checked_add(&reg_x_val, &reg_y_val);
 
-        self.cpu_registers[0xF] = if (result as u8) < (reg_x_val as u8) {
-            1
-        } else {
-            0
-        };
+        match result {
+            Some(x) => {
+                self.cpu_registers[reg_x] = x;
+                self.cpu_registers[0xF] = 0;
+            }
+            None => {
+                self.cpu_registers[0xF] = 1;
+                self.cpu_registers[reg_x] = (reg_x_val as u16 + reg_y_val as u16) as u8;
+            }
+        }
     }
 
     // 8XY5
     // VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
-    fn sub_registers(&mut self, register_x: u8, register_y: u8) {
-        let reg_x = (register_x & 0xF) as usize;
-        let reg_y = (register_y & 0xF) as usize;
+    fn sub_registers(&mut self, register_x: usize, register_y: usize) {
+        let reg_x = register_x & 0xF;
+        let reg_y = register_y & 0xF;
 
-        let reg_x_val: u16 = self.cpu_registers[reg_x] as u16;
-        let reg_y_val: u16 = self.cpu_registers[reg_y] as u16;
+        let reg_x_val: u8 = self.cpu_registers[reg_x];
+        let reg_y_val: u8 = self.cpu_registers[reg_y];
 
-        if reg_x_val < reg_y_val {
-            self.cpu_registers[0xF] = 0;
-            self.cpu_registers[reg_x] -= reg_y_val as u8;
-        } else {
-            self.cpu_registers[0xF] = 1;
-            self.cpu_registers[reg_x] -= reg_y_val as u8;
+        let result = CheckedSub::checked_sub(&reg_x_val, &reg_y_val);
+
+        match result {
+            Some(x) => {
+                self.cpu_registers[0xF] = 1;
+                self.cpu_registers[reg_x] = x;
+            }
+            None => {
+                self.cpu_registers[0xF] = 0;
+                self.cpu_registers[reg_x] = 255 - ((reg_y_val - reg_x_val) - 1)
+            }
         }
     }
 }
@@ -242,10 +253,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     pub fn sub_registers_test() {
         let mut c: Chip8 = Chip8::new();
         c.cpu_registers[0] = 4;
+        c.cpu_registers[1] = 4;
         c.cpu_registers[2] = 3;
         c.cpu_registers[4] = 3;
         c.cpu_registers[5] = 1;
@@ -256,7 +267,15 @@ mod tests {
         assert_eq!(c.cpu_registers[2], 3);
         assert_eq!(c.cpu_registers[0xF], 1);
 
-        // todo: handle more conditions
+        c.sub_registers(4, 5);
+        assert_eq!(c.cpu_registers[4], 2);
+        assert_eq!(c.cpu_registers[5], 1);
+        assert_eq!(c.cpu_registers[0xF], 1);
+
+        c.sub_registers(2, 1);
+        assert_eq!(c.cpu_registers[1], 4);
+        assert_eq!(c.cpu_registers[2], 255);
+        assert_eq!(c.cpu_registers[0xF], 0);
     }
 
     #[test]
