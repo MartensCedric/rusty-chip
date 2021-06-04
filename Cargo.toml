@@ -4,9 +4,8 @@ version = "0.1.0"
 authors = ["Cedric Martens <cedricmartens98@gmail.com>", "Adrien Tremblay <adrien@adrientremblay.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 rand = "0.7.3"
 ux = "0.1.3"
 num = "0.2"
+sdl2 = "0.34.5"

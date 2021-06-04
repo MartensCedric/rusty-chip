@@ -12,5 +12,5 @@ fn main() {
         process::exit(1);
     });
 
-    println!("Hello, world!");
+    chip8_gui::run(config);
 }
