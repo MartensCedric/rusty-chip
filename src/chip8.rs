@@ -517,7 +517,7 @@ impl Chip8 {
     fn index_reg_add(&mut self, reg_x: u8)
     {
         validate_argument(reg_x, 0xFF);
-        self.index_register = self.cpu_registers[reg_x as usize];
+        self.index_register = self.cpu_registers[reg_x as usize] as u16;
     }
 
     // FX29
@@ -551,16 +551,32 @@ impl Chip8 {
         self.memory[index + 2] = digits;
     }
 
-    Fx55 - LD [I], Vx
-    Store registers V0 through Vx in memory starting at location I.
+    // FX55
+    // Store registers V0 through Vx in memory starting at location I.
+    // The interpreter copies the values of registers V0 through Vx into memory,
+    // starting at the address in I.
+    fn store_registers(&mut self, value: u8)
+    {
+        validate_argument(value, 0xF);
+        for i in 0..(value - 1) {
+            let index = i as usize;
+            let memory_location = (self.index_register as usize + index) as usize;
+            self.memory[memory_location] = self.cpu_registers[index];
+        }
+    }
 
-    The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
-
-
-    Fx65 - LD Vx, [I]
-    Read registers V0 through Vx from memory starting at location I.
-
-    The interpreter reads values from memory starting at location I into registers V0 through Vx.
+    // FX65
+    // Read registers V0 through Vx from memory starting at location I.
+    // The interpreter reads values from memory starting at location I into registers V0 through Vx.
+    fn read_memory(&mut self, value: u8)
+    {
+        validate_argument(value, 0xF);
+        for i in 0..(value - 1) {
+            let index = i as usize;
+            let memory_location = (self.index_register as usize + index) as usize;
+            self.cpu_registers[index] = self.memory[memory_location];
+        }
+    }
 
 }
 
