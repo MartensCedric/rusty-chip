@@ -423,6 +423,7 @@ impl Chip8 {
     // If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
     // If the sprite is positioned so part of it is outside the coordinates of the display,
     // it wraps around to the opposite side of the screen.
+    // todo: rewrite draw function
     fn draw(&mut self, reg_x: u8, reg_y: u8, bytes_to_read: u8)
     {
         validate_argument(reg_x, 0xFF);
@@ -509,6 +510,57 @@ impl Chip8 {
         validate_argument(reg_x, 0xFF);
         self.sound_timer = self.cpu_registers[reg_x as usize];
     }
+
+    // FX1E
+    // Set I = I + Vx.
+    // The values of I and Vx are added, and the results are stored in I.
+    fn index_reg_add(&mut self, reg_x: u8)
+    {
+        validate_argument(reg_x, 0xFF);
+        self.index_register = self.cpu_registers[reg_x as usize];
+    }
+
+    // FX29
+    // Set I = location of sprite for digit Vx.
+    // The value of I is set to the location for the hexadecimal sprite corresponding
+    // to the value of Vx.
+    // This points to the reserved memory from the file read_only_memory.dat
+    fn set_index_to_character_address(&mut self, value: u8)
+    {
+        validate_argument(value, 0xF);
+        let address: u16 = (value * 12) as u16;
+        self.index_register = address;
+    }
+
+
+    // FX33
+    // Store BCD representation of Vx in memory locations I, I+1, and I+2.
+    // The interpreter takes the decimal value of Vx, and places the hundreds digit in memory
+    // at location in I, the tens digit at location I+1, and the ones digit at location I+2.
+    fn store_bcd(&mut self, reg_x: u8)
+    {
+        validate_argument(reg_x, 0xFF);
+        let value: u8 = self.cpu_registers[reg_x as usize];
+        let hundreds: u8 = value / 100;
+        let tens: u8 = (value - hundreds * 100) / 10;
+        let digits: u8 = ((value - hundreds * 100) - tens * 10);
+
+        let index: usize = self.index_register as usize;
+        self.memory[index] = hundreds;
+        self.memory[index + 1] = tens;
+        self.memory[index + 2] = digits;
+    }
+
+    Fx55 - LD [I], Vx
+    Store registers V0 through Vx in memory starting at location I.
+
+    The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
+
+
+    Fx65 - LD Vx, [I]
+    Read registers V0 through Vx from memory starting at location I.
+
+    The interpreter reads values from memory starting at location I into registers V0 through Vx.
 
 }
 
