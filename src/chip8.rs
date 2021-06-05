@@ -381,6 +381,15 @@ impl Chip8 {
         self.cpu_registers[reg_x as usize] = value & random_num;
     }
 
+    // DXYN
+    // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+    // The interpreter reads n bytes from memory, starting at the address stored in I.
+    // These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
+    // Sprites are XORed onto the existing screen.
+    // If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
+    // If the sprite is positioned so part of it is outside the coordinates of the display,
+    // it wraps around to the opposite side of the screen.
+
 
 }
 
@@ -417,7 +426,7 @@ mod tests {
     }
 
     #[test]
-    pub fn annn_opcode_test() {
+    pub fn load_index_test() {
         let mut c: Chip8 = Chip8::new();
         c.execute_instruction(0xA123);
         assert_eq!(c.index_register, 0x0123);
@@ -431,12 +440,12 @@ mod tests {
     }
 
     #[test]
-    pub fn jump_to_test() {
+    pub fn jump_to_address_plus_v0_test() {
         let mut c: Chip8 = Chip8::new();
         c.cpu_registers[0] = 0x69;
-        c.jump_to(0x0123);
+        c.jump_to_address_plus_v0(0x0123);
         assert_eq!(c.program_counter, 0x0123 + 0x69);
-        c.jump_to(0x0433);
+        c.jump_to_address_plus_v0(0x0433);
         assert_eq!(c.program_counter, 0x0433 + 0x69);
     }
 
