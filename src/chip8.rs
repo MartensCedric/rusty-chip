@@ -5,7 +5,6 @@ use std::ops::BitAnd;
 use std::fmt::Display;
 use crate::chip8_util::validate_argument;
 
-#[derive(Clone, Copy)]
 pub struct Chip8 {
     // We should break this into cohesive components
     memory: [u8; 4096],
@@ -16,7 +15,7 @@ pub struct Chip8 {
     pub gfx: [u8; 64 * 32],
     delay_timer: u8,
     sound_timer: u8,
-    stack_data: [u16; 16],
+    stack_data: Vec<u16>,
     sp: u16,
     key_states: u16,
 }
@@ -32,7 +31,7 @@ impl Chip8 {
             gfx: [0; 64 * 32],
             delay_timer: 0,
             sound_timer: 0,
-            stack_data: [0; 16],
+            stack_data: vec![0; 16],
             sp: 0,
             key_states: 0,
         }
@@ -45,19 +44,27 @@ impl Chip8 {
 
     // Executes the given opcode
     // Includes decoding and executing the given opcode
-    // TODO: complete this to handle every single opcode and call
-    // the correct associated function
     pub fn execute_instruction(&mut self, opcode: u16) {
         match opcode & 0xF000 {
+            0x0000 => {
+                match opcode {
+                    0x0E0 => self.clear_screen(),
+                    0x0EE => self.subroutine_return(),
+                    _ => panic!("Unknown opcode: {}", opcode)
+                }
+            },
+            0x1000 => self.jump_to_address(opcode & 0x0FFF),
+            0x2000 => self.call_address(opcode & 0x0FFF),
             0xA000 => self.set_index_register(opcode & 0x0FFF),
+
             _ => {
-                panic!("Unknown opcode!");
+                panic!("Unknown opcode: {}", opcode);
             }
         }
     }
 
     // essentially combine PC: u8 and PC+1: u8 into one u16 opcode to execute using bitshift ops
-    fn fetch_next(self) -> u16
+    fn fetch_next(&self) -> u16
     {
         (self.memory[self.program_counter as usize] as u16) << 8
             | self.memory[(self.program_counter + 1) as usize] as u16
@@ -69,14 +76,15 @@ impl Chip8 {
         self.gfx = [0; 64 * 32];
     }
 
-    // 00E0
+    // 00EE
     // Return from a subroutine
     // The interpreter sets the program counter to the address at the top of the stack,
     // then subtracts 1 from the stack pointer.
     fn subroutine_return(&mut self) {
-        match self.stack_data.first() {
+        match self.stack_data.last() {
             Some(x) => {
-                self.program_counter = x - 1;
+                self.program_counter = *x;
+                self.stack_data.pop();
             },
             None => panic!("Nothing in the stack!")
         }
@@ -86,6 +94,16 @@ impl Chip8 {
     // Jump Address
     // The interpreter sets the program counter to nnn
     fn jump_to_address(&mut self, address: u16) {
+        self.program_counter = validate_argument(address, 0x0FFF);
+    }
+
+    // 2NNN
+    // Call subroutine at nnn.
+    // The interpreter increments the stack pointer,
+    // then puts the current PC on the top of the stack. The PC is then set to nnn.
+    fn call_address(&mut self, address: u16)
+    {
+        self.stack_data.push(self.program_counter);
         self.program_counter = validate_argument(address, 0x0FFF);
     }
 
