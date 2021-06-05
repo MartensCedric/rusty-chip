@@ -1,14 +1,18 @@
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
-use sdl2::rect::Rect;
+use sdl2::rect::{Point, Rect};
+use sdl2::render;
+use sdl2::video::Window;
 use std::env;
 use std::error::Error;
 use std::fs;
 use std::time::Duration;
 
+const PIXEL_SIZE: u32 = 10;
+
 pub struct Config {
-    pub rom_filename: String,
+    pub rom_filename: String
 }
 
 impl Config {
@@ -19,7 +23,22 @@ impl Config {
 
         let rom_filename = args[1].clone();
 
-        Ok(Config { rom_filename })
+        Ok(Config {
+            rom_filename
+        })
+    }
+}
+
+fn index_to_point(index: i32) -> Point {
+    Point::new((index % 64) * PIXEL_SIZE as i32, (index / 32) * PIXEL_SIZE as i32)
+}
+
+fn set_grid_index_color(canvas: &mut render::WindowCanvas, index: i32, alpha: u8) {
+    canvas.set_draw_color(Color::RGBA(alpha, alpha, alpha, 255));
+    let point: Point = index_to_point(index);
+    match canvas.fill_rect(Rect::new(point.x, point.y, PIXEL_SIZE, PIXEL_SIZE)) {
+        Err(e) => println!("{:?}", e),
+        _ => (),
     }
 }
 
@@ -28,17 +47,16 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("Rusty Chip", 640, 320)
+        .window(
+            "Rusty Chip",
+            64 * PIXEL_SIZE,
+            32 * PIXEL_SIZE,
+        )
         .position_centered()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
-    canvas.set_draw_color(Color::RGB(0, 0, 0));
-    canvas.clear();
-    canvas.set_draw_color(Color::RGB(255, 210, 0));
-    canvas.fill_rect(Rect::new(10, 10, 780, 580));
-    canvas.present();
 
     // let contents = fs::read_to_string(config.rom_filename)?;
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -47,6 +65,15 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         i = (i + 1) % 255;
         canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
         canvas.clear();
+
+        set_grid_index_color(&mut canvas, 0, 0);
+        set_grid_index_color(&mut canvas, 1, 255);
+        set_grid_index_color(&mut canvas, 3, 150);
+        set_grid_index_color(&mut canvas, 63, 255);
+        set_grid_index_color(&mut canvas, 64, 150);
+        set_grid_index_color(&mut canvas, 65, 0);
+
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
