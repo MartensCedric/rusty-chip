@@ -43,6 +43,17 @@ impl Chip8 {
         self.execute_instruction(opcode);
     }
 
+    pub fn decrement_timers(&mut self)
+    {
+        self.delay_timer -= 1;
+        self.sound_timer -= 1;
+    }
+
+    pub fn is_sound_active(&self) -> bool
+    {
+        self.sound_timer >= 0
+    }
+
     // Executes the given opcode
     // Includes decoding and executing the given opcode
     pub fn execute_instruction(&mut self, opcode: u16) {
@@ -89,6 +100,28 @@ impl Chip8 {
                 }
             },
             0xA000 => self.set_index_register(opcode & 0x0FFF),
+            0xB000 => self.jump_to_address_plus_v0(opcode & 0x0FFF),
+            0xC000 => self.set_rand(((opcode & 0x0F00) >> 8) as u8, (opcode & 0x0FF) as u8),
+            0xD000 => self.draw(
+                ((opcode & 0x0F00) >> 8) as u8,
+                ((opcode & 0x00F0) >> 4) as u8,
+                (opcode & 0xF) as u8),
+            0xE000 => {
+                match opcode & 0xF0FF {
+                    0xE09E => self.skip_if_key_down(((opcode & 0x0F00) >> 8) as u8),
+                    0xE0A1 => self.skip_if_key_up(((opcode & 0x0F00) >> 8) as u8),
+                    _ => panic!("Unknown opcode: {}", opcode)
+                }
+            },
+            0xF000 => {
+                match opcode & 0xF0FF {
+                    0xF007 => self.read_delay_timer(((opcode & 0x0F00) >> 8) as u8),
+                    0xF00A => self.wait_for_key(((opcode & 0x0F00) >> 8) as u8),
+                    0xF015 => self.set_delay_timer(((opcode & 0x0F00) >> 8) as u8),
+                    0xF018 => self.set_sound_timer(((opcode & 0x0F00) >> 8) as u8),
+                    _ => panic!("Unknown opcode: {}", opcode)
+                }
+            },
             _ => {
                 panic!("Unknown opcode: {}", opcode);
             }
@@ -403,9 +436,9 @@ impl Chip8 {
         let mut pixel_was_erased: bool = false;
         for i in 0..(bytes_to_read-1) {
             let index: u8 = x + y * 64;
-            self.gfx[index] ^= self.memory[reading_address + i];
+            self.gfx[index as usize] ^= self.memory[(reading_address + i as u16) as usize];
 
-            if self.gfx[index] == 0 {
+            if self.gfx[index as usize] == 0 {
                 pixel_was_erased = true;
             }
         }
@@ -413,6 +446,69 @@ impl Chip8 {
         self.cpu_registers[0xF] = if pixel_was_erased { 1 } else {0};
     }
 
+    // EX9E
+    // Skip next instruction if key with the value of Vx is pressed.
+    // Checks the keyboard, and if the key corresponding to the value of Vx is currently in
+    // the down position, PC is increased by 2.
+    // todo: see 3XKK
+    fn skip_if_key_down(&mut self, key: u8)
+    {
+        let is_key_pressed = false;
+        if is_key_pressed {
+            self.program_counter += 1;
+        }
+    }
+
+    // EXA1
+    // Skip next instruction if key with the value of Vx is not pressed.
+    // Checks the keyboard, and if the key corresponding to the value of Vx is currently in
+    // the up position, PC is increased by 2.
+    // todo: see 3XKK
+    fn skip_if_key_up(&mut self, key: u8)
+    {
+        let is_key_pressed = false;
+        if !is_key_pressed {
+            self.program_counter += 1;
+        }
+    }
+
+    // FX07
+    // Set Vx = delay timer value.
+    // The value of DT is placed into Vx.
+    fn read_delay_timer(&mut self, reg_x: u8)
+    {
+        validate_argument(reg_x, 0xFF);
+        self.cpu_registers[reg_x as usize] = self.delay_timer;
+    }
+
+    // FX0A
+    // Wait for a key press, store the value of the key in Vx.
+    // All execution stops until a key is pressed, then the value of that key is stored in Vx.
+    fn wait_for_key(&mut self, reg_x: u8)
+    {
+        validate_argument(reg_x, 0xFF);
+        panic!("wait_for_key not implemented!");
+        let key_pressed = 0;
+        self.cpu_registers[reg_x as usize] = key_pressed;
+    }
+
+    // FX15
+    // Set delay timer = Vx.
+    // DT is set equal to the value of Vx.
+    fn set_delay_timer(&mut self, reg_x: u8)
+    {
+        validate_argument(reg_x, 0xFF);
+        self.delay_timer = self.cpu_registers[reg_x as usize];
+    }
+
+    // FX18
+    // Set sound timer = Vx.
+    // ST is set equal to the value of Vx.
+    fn set_sound_timer(&mut self, reg_x: u8)
+    {
+        validate_argument(reg_x, 0xFF);
+        self.sound_timer = self.cpu_registers[reg_x as usize];
+    }
 
 }
 
