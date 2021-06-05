@@ -64,6 +64,29 @@ impl Chip8 {
             0x5000 => self.skip_next_if_vx_eql_vy(
                 ((opcode & 0xF00) >> 8) as u8, // XY0
                 ((opcode & 0x0F0) >> 4) as u8),
+            0x6000 => self.set_register_value(      // XKK
+                ((opcode & 0xF00) >> 8) as u8,
+                ((opcode & 0x0FF) as u8)
+            ),
+            0x7000 => self.add(      // XKK
+                ((opcode & 0xF00) >> 8) as u8,
+                ((opcode & 0x0FF) as u8)
+            ),
+            0x8000 => {
+                match opcode & 0xF00F {
+                    0x8000 => self.load(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
+                    0x8001 => self.bit_or(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
+                    0x8002 => self.bit_and(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
+                    0x8003 => self.bit_xor(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
+                    0x8004 => self.add_registers(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
+                    0x8005 => self.sub_registers(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
+                    0x8006 => self.shift_right_register(((opcode & 0x0F00) >> 8) as u8),
+                    0x8007 => self.sub_registers_not(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
+                    0x800E => self.shift_left_register(((opcode & 0x0F00) >> 8) as u8),
+                    _ => panic!("Unknown opcode: {}", opcode)
+
+                }
+            },
             0xA000 => self.set_index_register(opcode & 0x0FFF),
             _ => {
                 panic!("Unknown opcode: {}", opcode);
@@ -234,12 +257,12 @@ impl Chip8 {
 
         match result {
             Some(x) => {
-                self.cpu_registers[reg_x] = x;
+                self.cpu_registers[reg_x as usize] = x;
                 self.cpu_registers[0xF] = 0;
             }
             None => {
                 self.cpu_registers[0xF] = 1;
-                self.cpu_registers[reg_x] = (reg_x_val as u16 + reg_y_val as u16) as u8;
+                self.cpu_registers[reg_x as usize] = (reg_x_val as u16 + reg_y_val as u16) as u8;
             }
         }
     }
@@ -333,26 +356,29 @@ impl Chip8 {
         }
     }
 
-
-
     // ANNN
     // Sets I to the address NNN.
-    fn set_index_register(&mut self, value_nnn: u16) {
-        self.index_register = 0x0FFF & value_nnn;
+    fn set_index_register(&mut self, value: u16) {
+        validate_argument(value, 0x0FFF);
+        self.index_register = value;
     }
 
     // BNNN
     // Jumps to the address NNN plus V0..
-    fn jump_to(&mut self, value_nnn: u16) {
-        self.program_counter = (0x0FFF & value_nnn) + (self.cpu_registers[0] as u16);
+    fn jump_to_address_plus_v0(&mut self, value: u16) {
+        validate_argument(value, 0xFFF);
+        self.program_counter = value + (self.cpu_registers[0] as u16);
     }
 
     // CXNN
-    // Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
-    fn set_rand(&mut self, index: u8, value_nn: u8) {
+    // Set Vx = random byte AND kk.
+    // The interpreter generates a random number from 0 to 255,
+    // which is then ANDed with the value kk.
+    // The results are stored in Vx.
+    fn set_rand(&mut self, reg_x: u8, value: u8) {
         let mut rng = rand::thread_rng();
         let random_num: u8 = rng.gen();
-        self.cpu_registers[index as usize] = value_nn & random_num;
+        self.cpu_registers[reg_x as usize] = value & random_num;
     }
 
 
