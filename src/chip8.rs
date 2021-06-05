@@ -55,12 +55,15 @@ impl Chip8 {
             },
             0x1000 => self.jump_to_address(opcode & 0x0FFF),
             0x2000 => self.call_address(opcode & 0x0FFF),
-            0x3000 => self.skip_next_if_byte_is_vx(((opcode & 0x0F00) >> 0xFF) as u8, // XKK
-                                                   (opcode & 0x0FF) as u8),
-            0x4000 => self.skip_next_if_byte_is_not_vx(((opcode & 0x0F00) >> 0xFF) as u8, // XKK
-                                                   (opcode & 0x0FF) as u8),
-            0x5000 => self.skip_next_if_vx_eql_vy(((opcode & 0xF00) >> 0xF0) as u8, // XY0
-                                                  ((opcode & 0x0F0) >> 0x0F) as u8),
+            0x3000 => self.skip_next_if_byte_is_vx(
+                ((opcode & 0x0F00).checked_shr(0xFF).unwrap()) as u8, // XKK
+                (opcode & 0x0FF) as u8),
+            0x4000 => self.skip_next_if_byte_is_not_vx(
+                ((opcode & 0x0F00).checked_shr(0xFF).unwrap()) as u8, // XKK
+                (opcode & 0x0FF) as u8),
+            0x5000 => self.skip_next_if_vx_eql_vy(
+                ((opcode & 0xF00).checked_shr(0xF0).unwrap()) as u8, // XY0
+                (opcode & 0x0F0).checked_shr(0x0F).unwrap() as u8),
             0xA000 => self.set_index_register(opcode & 0x0FFF),
             _ => {
                 panic!("Unknown opcode: {}", opcode);
