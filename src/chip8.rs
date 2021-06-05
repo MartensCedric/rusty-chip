@@ -78,6 +78,11 @@ impl Chip8 {
             | self.memory[(self.program_counter + 1) as usize] as u16
     }
 
+    //
+    // Below are all the opcodes. Please refer to section 3.1
+    // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#00E0
+    //
+
     // 00E0
     // Clears the screen.
     fn clear_screen(&mut self) {
@@ -170,37 +175,60 @@ impl Chip8 {
     // 7XKK
     // Set Vx = Vx + kk.
     // Adds the value kk to the value of register Vx, then stores the result in Vx.
-    fn vx_increment_by(&mut self, reg_x: u8, byte_value: u8)
+    fn add(&mut self, reg_x: u8, byte_value: u8)
     {
         validate_argument(reg_x, 0xF);
         validate_argument(byte_value, 0xF);
         self.cpu_registers[reg_x as usize] += byte_value;
     }
 
-
-    // 7XNN
-    // Adds NN to VX. (Carry flag is not changed)
-    fn add(&mut self, register_x: u8, value_nn: u8) {
-        let reg_x: u8 = validate_argument(register_x, 0xF);
-        self.cpu_registers[reg_x as usize] += value_nn;
+    // 8XY0
+    // Set Vx = Vy.
+    // Stores the value of register Vy in register Vx.
+    fn load(&mut self, reg_x: u8, reg_y: u8) {
+        validate_argument(reg_x, 0xF);
+        validate_argument(reg_y, 0xF);
+        self.cpu_registers[reg_x as usize] = self.cpu_registers[reg_y as usize];
     }
 
     // 8XY1
-    // Sets VX to VX or VY. (Bitwise OR operation)
-    fn bit_or(&mut self, register_x: u8, register_y: u8) {
-        let reg_x : usize = validate_argument(register_x, 0xF) as usize;
-        let reg_y : usize = validate_argument(register_y, 0xF) as usize;
-        self.cpu_registers[reg_x] |= self.cpu_registers[reg_y];
+    // Set Vx = Vx OR Vy.
+    // Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx.
+    fn bit_or(&mut self, reg_x: u8, reg_y: u8) {
+        validate_argument(reg_x, 0xF) as usize;
+        validate_argument(reg_y, 0xF) as usize;
+        self.cpu_registers[reg_x as usize] |= self.cpu_registers[reg_y as usize];
+    }
+
+    // 8XY2
+    // Set Vx = Vx AND Vy.
+    // Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
+    fn bit_and(&mut self, reg_x: u8, reg_y: u8) {
+        validate_argument(reg_x, 0xF) as usize;
+        validate_argument(reg_y, 0xF) as usize;
+        self.cpu_registers[reg_x as usize] &= self.cpu_registers[reg_y as usize];
+    }
+
+    // 8XY3
+    // Set Vx = Vx XOR Vy.
+    // Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx.
+    fn bit_xor(&mut self, reg_x: u8, reg_y: u8) {
+        validate_argument(reg_x, 0xF) as usize;
+        validate_argument(reg_y, 0xF) as usize;
+        self.cpu_registers[reg_x as usize] ^= self.cpu_registers[reg_y as usize];
     }
 
     // 8XY4
-    // Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
-    fn add_registers(&mut self, register_x: usize, register_y: usize) {
-        let reg_x = validate_argument(register_x, 0xF);
-        let reg_y = validate_argument(register_y, 0xF);
+    // Set Vx = Vx + Vy, set VF = carry.
+    // The values of Vx and Vy are added together.
+    // If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
+    // Only the lowest 8 bits of the result are kept, and stored in Vx.
+    fn add_registers(&mut self, reg_x: u8, reg_y: u8) {
+        validate_argument(reg_x, 0xF);
+        validate_argument(reg_y, 0xF);
 
-        let reg_x_val: u8 = self.cpu_registers[reg_x];
-        let reg_y_val: u8 = self.cpu_registers[reg_y];
+        let reg_x_val: u8 = self.cpu_registers[reg_x as usize];
+        let reg_y_val: u8 = self.cpu_registers[reg_y as usize];
 
         let result = CheckedAdd::checked_add(&reg_x_val, &reg_y_val);
 
@@ -218,23 +246,23 @@ impl Chip8 {
 
     // 8XY5
     // VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
-    fn sub_registers(&mut self, register_x: usize, register_y: usize) {
-        let reg_x = validate_argument(register_x, 0xF);
-        let reg_y = validate_argument(register_y, 0xF);
+    fn sub_registers(&mut self, reg_x: u8, reg_y: u8) {
+        validate_argument(reg_x, 0xF);
+        validate_argument(reg_y, 0xF);
 
-        let reg_x_val: u8 = self.cpu_registers[reg_x];
-        let reg_y_val: u8 = self.cpu_registers[reg_y];
+        let reg_x_val: u8 = self.cpu_registers[reg_x as usize];
+        let reg_y_val: u8 = self.cpu_registers[reg_y as usize];
 
         let result = CheckedSub::checked_sub(&reg_x_val, &reg_y_val);
 
         match result {
             Some(x) => {
                 self.cpu_registers[0xF] = 1;
-                self.cpu_registers[reg_x] = x;
+                self.cpu_registers[reg_x as usize] = x;
             }
             None => {
                 self.cpu_registers[0xF] = 0;
-                self.cpu_registers[reg_x] = 255 - ((reg_y_val - reg_x_val) - 1)
+                self.cpu_registers[reg_x as usize] = 255 - ((reg_y_val - reg_x_val) - 1)
             }
         }
     }
