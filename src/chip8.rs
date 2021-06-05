@@ -55,8 +55,13 @@ impl Chip8 {
             },
             0x1000 => self.jump_to_address(opcode & 0x0FFF),
             0x2000 => self.call_address(opcode & 0x0FFF),
+            0x3000 => self.skip_next_if_byte_is_vx(((opcode & 0x0F00) >> 0xFF) as u8, // XKK
+                                                   (opcode & 0x0FF) as u8),
+            0x4000 => self.skip_next_if_byte_is_not_vx(((opcode & 0x0F00) >> 0xFF) as u8, // XKK
+                                                   (opcode & 0x0FF) as u8),
+            0x5000 => self.skip_next_if_vx_eql_vy(((opcode & 0xF00) >> 0xF0) as u8, // XY0
+                                                  ((opcode & 0x0F0) >> 0x0F) as u8),
             0xA000 => self.set_index_register(opcode & 0x0FFF),
-
             _ => {
                 panic!("Unknown opcode: {}", opcode);
             }
@@ -106,6 +111,43 @@ impl Chip8 {
         self.stack_data.push(self.program_counter);
         self.program_counter = validate_argument(address, 0x0FFF);
     }
+
+    // 3XKK
+    // Skip next instruction if VX = KK.
+    // The interpreter compares register Vx to kk, and if they are equal,
+    // increments the program counter by 2.
+    // [todo: I incremented the program counter by 1, to be examined more]
+    fn skip_next_if_byte_is_vx(&mut self, reg_x: u8, byte_value: u8)
+    {
+        if self.cpu_registers[reg_x as usize] == byte_value {
+            self.program_counter += 1;
+        }
+    }
+
+    // 4XKK
+    // Skip next instruction if Vx != kk.
+    // The interpreter compares register Vx to kk,
+    // and if they are not equal, increments the program counter by 2.
+    // todo: see todo in 3XKK
+    fn skip_next_if_byte_is_not_vx(&mut self, reg_x: u8, byte_value: u8)
+    {
+        if self.cpu_registers[reg_x as usize] != byte_value {
+            self.program_counter += 1;
+        }
+    }
+
+    // 5XY0
+    // Skip next instruction if Vx = Vy.
+    // The interpreter compares register Vx to register Vy, and if they are equal,
+    // increments the program counter by 2.
+    // todo: see todo in 3XKK
+    fn skip_next_if_vx_eql_vy(&mut self, reg_x: u8, reg_y: u8)
+    {
+        if self.cpu_registers[reg_x as usize] == self.cpu_registers[reg_y as usize] {
+            self.program_counter += 1;
+        }
+    }
+
 
     // ANNN
     // Sets I to the address NNN.
