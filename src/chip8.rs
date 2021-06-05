@@ -56,14 +56,14 @@ impl Chip8 {
             0x1000 => self.jump_to_address(opcode & 0x0FFF),
             0x2000 => self.call_address(opcode & 0x0FFF),
             0x3000 => self.skip_next_if_byte_is_vx(
-                ((opcode & 0x0F00).checked_shr(0xFF).unwrap()) as u8, // XKK
+                ((opcode & 0x0F00) >> 8) as u8, // XKK
                 (opcode & 0x0FF) as u8),
             0x4000 => self.skip_next_if_byte_is_not_vx(
-                ((opcode & 0x0F00).checked_shr(0xFF).unwrap()) as u8, // XKK
+                ((opcode & 0x0F00) >> 8) as u8, // XKK
                 (opcode & 0x0FF) as u8),
             0x5000 => self.skip_next_if_vx_eql_vy(
-                ((opcode & 0xF00).checked_shr(0xF0).unwrap()) as u8, // XY0
-                (opcode & 0x0F0).checked_shr(0x0F).unwrap() as u8),
+                ((opcode & 0xF00) >> 8) as u8, // XY0
+                ((opcode & 0x0F0) >> 4) as u8),
             0xA000 => self.set_index_register(opcode & 0x0FFF),
             _ => {
                 panic!("Unknown opcode: {}", opcode);
@@ -266,6 +266,74 @@ impl Chip8 {
             }
         }
     }
+
+    // 8XY6
+    // Set Vx = Vx SHR 1.
+    // If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0.
+    // Then Vx is divided by 2.
+    fn shift_right_register(&mut self, reg_x: u8)
+    {
+        validate_argument(reg_x, 0xF);
+        self.cpu_registers[reg_x as usize] = {
+            if self.cpu_registers[reg_x as usize] & 1 == 1
+            { 1 } else { 0 }
+        };
+        self.cpu_registers[reg_x as usize] >>= 1;
+    }
+
+    // 8XY7
+    // Set Vx = Vy - Vx, set VF = NOT borrow.
+    // If Vy > Vx, then VF is set to 1, otherwise 0.
+    // Then Vx is subtracted from Vy, and the results stored in Vx.
+    fn sub_registers_not(&mut self, reg_x: u8, reg_y: u8) {
+        validate_argument(reg_x, 0xF);
+        validate_argument(reg_y, 0xF);
+
+        let reg_x_val: u8 = self.cpu_registers[reg_x as usize];
+        let reg_y_val: u8 = self.cpu_registers[reg_y as usize];
+
+        let result = CheckedSub::checked_sub(&reg_y_val, &reg_x_val);
+
+        match result {
+            Some(y) => {
+                self.cpu_registers[0xF] = 1;
+                self.cpu_registers[reg_y as usize] = y;
+            }
+            None => {
+                self.cpu_registers[0xF] = 0;
+                self.cpu_registers[reg_y as usize] = 255 - ((reg_x_val - reg_y_val) - 1)
+            }
+        }
+    }
+
+    // 8XYE
+    // Set Vx = Vx SHL 1.
+    // If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
+    fn shift_left_register(&mut self, reg_x: u8)
+    {
+        validate_argument(reg_x, 0xF);
+        self.cpu_registers[reg_x as usize] = {
+            if self.cpu_registers[reg_x as usize] & 1 == 1
+            { 1 } else { 0 }
+        };
+        self.cpu_registers[reg_x as usize] <<= 1;
+    }
+
+    // 9XY0
+    // Skip next instruction if Vx != Vy.
+    // The values of Vx and Vy are compared, and if they are not equal,
+    // the program counter is increased by 2.
+    // todo: see 3XKK
+    fn skip_next_if_vx_not_eql_vy(&mut self, reg_x: u8, reg_y: u8)
+    {
+        validate_argument(reg_x, 0xF);
+        validate_argument(reg_y, 0xF);
+        if self.cpu_registers[reg_x as usize] != self.cpu_registers[reg_y as usize] {
+            self.program_counter += 1;
+        }
+    }
+
+
 
     // ANNN
     // Sets I to the address NNN.
