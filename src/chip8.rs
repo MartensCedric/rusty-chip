@@ -4,6 +4,7 @@ use rand::Rng;
 use std::ops::BitAnd;
 use std::fmt::Display;
 use crate::chip8_util::validate_argument;
+use std::fs::read;
 
 pub struct Chip8 {
     // We should break this into cohesive components
@@ -389,6 +390,28 @@ impl Chip8 {
     // If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
     // If the sprite is positioned so part of it is outside the coordinates of the display,
     // it wraps around to the opposite side of the screen.
+    fn draw(&mut self, reg_x: u8, reg_y: u8, bytes_to_read: u8)
+    {
+        validate_argument(reg_x, 0xFF);
+        validate_argument(reg_y, 0xFF);
+
+        let x: u8 = self.cpu_registers[reg_x as usize];
+        let y: u8 = self.cpu_registers[reg_y as usize];
+
+        let reading_address: u16 = self.index_register;
+
+        let mut pixel_was_erased: bool = false;
+        for i in 0..(bytes_to_read-1) {
+            let index: u8 = x + y * 64;
+            self.gfx[index] ^= self.memory[reading_address + i];
+
+            if self.gfx[index] == 0 {
+                pixel_was_erased = true;
+            }
+        }
+
+        self.cpu_registers[0xF] = if pixel_was_erased { 1 } else {0};
+    }
 
 
 }
@@ -456,11 +479,6 @@ mod tests {
         assert_eq!(c.index_register, 100);
     }
 
-    #[test]
-    pub fn set_rand_test() {
-        let mut c: Chip8 = Chip8::new();
-        // I don't fucking know how to test this...
-    }
 
     #[test]
     pub fn add_test() {
