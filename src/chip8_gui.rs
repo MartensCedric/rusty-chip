@@ -8,6 +8,7 @@ use std::env;
 use std::error::Error;
 use std::fs;
 use std::time::Duration;
+use crate::chip8::Chip8;
 
 const PIXEL_SIZE: u32 = 10;
 
@@ -44,6 +45,8 @@ fn set_grid_index_color(canvas: &mut render::WindowCanvas, index: i32, alpha: u8
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     println!("Started rusty_chip!");
+    let chip8: Chip8 = Chip8::new();
+
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
@@ -63,16 +66,12 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut i = 0;
     'running: loop {
         i = (i + 1) % 255;
-        canvas.set_draw_color(Color::RGB(i, 64, 255 - i));
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
 
-        set_grid_index_color(&mut canvas, 0, 0);
-        set_grid_index_color(&mut canvas, 1, 255);
-        set_grid_index_color(&mut canvas, 3, 150);
-        set_grid_index_color(&mut canvas, 63, 255);
-        set_grid_index_color(&mut canvas, 64, 150);
-        set_grid_index_color(&mut canvas, 65, 0);
-
+        for (index, alpha) in chip8.gfx.iter().enumerate() {
+            set_grid_index_color(&mut canvas, index as i32, *alpha);
+        }
 
         for event in event_pump.poll_iter() {
             match event {

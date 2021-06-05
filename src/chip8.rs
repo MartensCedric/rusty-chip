@@ -9,7 +9,7 @@ pub struct Chip8 {
     opcode: u8,
     index_register: u16,
     program_counter: u16,
-    gfx: [u8; 64 * 32],
+    pub gfx: [u8; 64 * 32],
     delay_timer: u8,
     sound_timer: u8,
     stack_data: [u16; 16],
