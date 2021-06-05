@@ -119,6 +119,8 @@ impl Chip8 {
     // [todo: I incremented the program counter by 1, to be examined more]
     fn skip_next_if_byte_is_vx(&mut self, reg_x: u8, byte_value: u8)
     {
+        validate_argument(reg_x, 0xF);
+        validate_argument(byte_value, 0xF);
         if self.cpu_registers[reg_x as usize] == byte_value {
             self.program_counter += 1;
         }
@@ -131,6 +133,8 @@ impl Chip8 {
     // todo: see todo in 3XKK
     fn skip_next_if_byte_is_not_vx(&mut self, reg_x: u8, byte_value: u8)
     {
+        validate_argument(reg_x, 0xF);
+        validate_argument(byte_value, 0xF);
         if self.cpu_registers[reg_x as usize] != byte_value {
             self.program_counter += 1;
         }
@@ -143,31 +147,33 @@ impl Chip8 {
     // todo: see todo in 3XKK
     fn skip_next_if_vx_eql_vy(&mut self, reg_x: u8, reg_y: u8)
     {
+        validate_argument(reg_x, 0xF);
+        validate_argument(reg_y, 0xF);
         if self.cpu_registers[reg_x as usize] == self.cpu_registers[reg_y as usize] {
             self.program_counter += 1;
         }
     }
 
-
-    // ANNN
-    // Sets I to the address NNN.
-    fn set_index_register(&mut self, value_nnn: u16) {
-        self.index_register = 0x0FFF & value_nnn;
+    // 6XKK
+    // Set VX = KK.
+    // The interpreter puts the value KK into register VX.
+    fn set_register_value(&mut self, reg_x: u8, byte_value: u8)
+    {
+        validate_argument(reg_x, 0xF);
+        validate_argument(byte_value, 0xF);
+        self.cpu_registers[reg_x as usize] = byte_value;
     }
 
-    // BNNN
-    // Jumps to the address NNN plus V0..
-    fn jump_to(&mut self, value_nnn: u16) {
-        self.program_counter = (0x0FFF & value_nnn) + (self.cpu_registers[0] as u16);
+    // 7XKK
+    // Set Vx = Vx + kk.
+    // Adds the value kk to the value of register Vx, then stores the result in Vx.
+    fn vx_increment_by(&mut self, reg_x: u8, byte_value: u8)
+    {
+        validate_argument(reg_x, 0xF);
+        validate_argument(byte_value, 0xF);
+        self.cpu_registers[reg_x as usize] += byte_value;
     }
 
-    // CXNN
-    // Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
-    fn set_rand(&mut self, index: u8, value_nn: u8) {
-        let mut rng = rand::thread_rng();
-        let random_num: u8 = rng.gen();
-        self.cpu_registers[index as usize] = value_nn & random_num;
-    }
 
     // 7XNN
     // Adds NN to VX. (Carry flag is not changed)
@@ -229,6 +235,28 @@ impl Chip8 {
             }
         }
     }
+
+    // ANNN
+    // Sets I to the address NNN.
+    fn set_index_register(&mut self, value_nnn: u16) {
+        self.index_register = 0x0FFF & value_nnn;
+    }
+
+    // BNNN
+    // Jumps to the address NNN plus V0..
+    fn jump_to(&mut self, value_nnn: u16) {
+        self.program_counter = (0x0FFF & value_nnn) + (self.cpu_registers[0] as u16);
+    }
+
+    // CXNN
+    // Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+    fn set_rand(&mut self, index: u8, value_nn: u8) {
+        let mut rng = rand::thread_rng();
+        let random_num: u8 = rng.gen();
+        self.cpu_registers[index as usize] = value_nn & random_num;
+    }
+
+
 }
 
 #[cfg(test)]
