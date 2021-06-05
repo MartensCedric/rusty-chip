@@ -1,7 +1,11 @@
-use num::CheckedAdd;
+use num::{CheckedAdd, PrimInt};
 use num::CheckedSub;
 use rand::Rng;
+use std::ops::BitAnd;
+use std::fmt::Display;
+use crate::chip8_util::validate_argument;
 
+#[derive(Clone, Copy)]
 pub struct Chip8 {
     // We should break this into cohesive components
     memory: [u8; 4096],
@@ -35,18 +39,14 @@ impl Chip8 {
     }
 
     pub fn fetch_cycle(&mut self) {
-        // fetch opcode
-        // essentially combine PC: u8 and PC+1: u8 into one u16 opcode to execute using bitshift ops
-        let opcode: u16 = (self.memory[self.program_counter as usize] as u16) << 8
-            | self.memory[(self.program_counter + 1) as usize] as u16;
-        // execute opcode
+        let opcode: u16 = self.fetch_next();
         self.execute_instruction(opcode);
     }
 
     // Executes the given opcode
     // Includes decoding and executing the given opcode
     // TODO: complete this to handle every single opcode and call
-    // the correct assosiated function
+    // the correct associated function
     pub fn execute_instruction(&mut self, opcode: u16) {
         match opcode & 0xF000 {
             0xA000 => self.set_index_register(opcode & 0x0FFF),
@@ -56,10 +56,37 @@ impl Chip8 {
         }
     }
 
+    // essentially combine PC: u8 and PC+1: u8 into one u16 opcode to execute using bitshift ops
+    fn fetch_next(self) -> u16
+    {
+        (self.memory[self.program_counter as usize] as u16) << 8
+            | self.memory[(self.program_counter + 1) as usize] as u16
+    }
+
     // 00E0
     // Clears the screen.
     fn clear_screen(&mut self) {
         self.gfx = [0; 64 * 32];
+    }
+
+    // 00E0
+    // Return from a subroutine
+    // The interpreter sets the program counter to the address at the top of the stack,
+    // then subtracts 1 from the stack pointer.
+    fn subroutine_return(&mut self) {
+        match self.stack_data.first() {
+            Some(x) => {
+                self.program_counter = x - 1;
+            },
+            None => panic!("Nothing in the stack!")
+        }
+    }
+
+    // 1NNN
+    // Jump Address
+    // The interpreter sets the program counter to nnn
+    fn jump_to_address(&mut self, address: u16) {
+        self.program_counter = validate_argument(address, 0x0FFF);
     }
 
     // ANNN
@@ -84,25 +111,24 @@ impl Chip8 {
 
     // 7XNN
     // Adds NN to VX. (Carry flag is not changed)
-    // Panics if registerX is out of bounds
     fn add(&mut self, register_x: u8, value_nn: u8) {
-        self.cpu_registers[(register_x & 0x0F) as usize] += value_nn;
+        let reg_x: u8 = validate_argument(register_x, 0xF);
+        self.cpu_registers[reg_x as usize] += value_nn;
     }
 
     // 8XY1
     // Sets VX to VX or VY. (Bitwise OR operation)
-    // Panics if registers are out of bounds
     fn bit_or(&mut self, register_x: u8, register_y: u8) {
-        let reg_x = (register_x & 0xF) as usize;
-        let reg_y = (register_y & 0xF) as usize;
+        let reg_x : usize = validate_argument(register_x, 0xF) as usize;
+        let reg_y : usize = validate_argument(register_y, 0xF) as usize;
         self.cpu_registers[reg_x] |= self.cpu_registers[reg_y];
     }
 
     // 8XY4
     // Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
     fn add_registers(&mut self, register_x: usize, register_y: usize) {
-        let reg_x = register_x & 0xF;
-        let reg_y = register_y & 0xF;
+        let reg_x = validate_argument(register_x, 0xF);
+        let reg_y = validate_argument(register_y, 0xF);
 
         let reg_x_val: u8 = self.cpu_registers[reg_x];
         let reg_y_val: u8 = self.cpu_registers[reg_y];
@@ -124,8 +150,8 @@ impl Chip8 {
     // 8XY5
     // VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
     fn sub_registers(&mut self, register_x: usize, register_y: usize) {
-        let reg_x = register_x & 0xF;
-        let reg_y = register_y & 0xF;
+        let reg_x = validate_argument(register_x, 0xF);
+        let reg_y = validate_argument(register_y, 0xF);
 
         let reg_x_val: u8 = self.cpu_registers[reg_x];
         let reg_y_val: u8 = self.cpu_registers[reg_y];

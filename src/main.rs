@@ -3,6 +3,7 @@ use std::process;
 
 mod chip8;
 mod chip8_gui;
+mod chip8_util;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
