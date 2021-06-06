@@ -119,6 +119,11 @@ impl Chip8 {
                     0xF00A => self.wait_for_key(((opcode & 0x0F00) >> 8) as u8),
                     0xF015 => self.set_delay_timer(((opcode & 0x0F00) >> 8) as u8),
                     0xF018 => self.set_sound_timer(((opcode & 0x0F00) >> 8) as u8),
+                    0xF01E => self.index_reg_add(((opcode & 0x0F00) >> 8) as u8),
+                    0xF029 => self.set_index_to_character_address(((opcode & 0x0F00) >> 8) as u8),
+                    0xF033 => self.store_bcd(((opcode & 0x0F00) >> 8) as u8),
+                    0xF055 => self.store_registers(((opcode & 0x0F00) >> 8) as u8),
+                    0xF065 => self.read_memory(((opcode & 0x0F00) >> 8) as u8),
                     _ => panic!("Unknown opcode: {}", opcode)
                 }
             },
@@ -423,7 +428,6 @@ impl Chip8 {
     // If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
     // If the sprite is positioned so part of it is outside the coordinates of the display,
     // it wraps around to the opposite side of the screen.
-    // todo: rewrite draw function
     fn draw(&mut self, reg_x: u8, reg_y: u8, bytes_to_read: u8)
     {
         validate_argument(reg_x, 0xFF);
@@ -435,16 +439,34 @@ impl Chip8 {
         let reading_address: u16 = self.index_register;
 
         let mut pixel_was_erased: bool = false;
-        for i in 0..(bytes_to_read-1) {
-            let index: u8 = x + y * 64;
-            self.gfx[index as usize] ^= self.memory[(reading_address + i as u16) as usize];
-
-            if self.gfx[index as usize] == 0 {
+        for i in 0..bytes_to_read {
+            if self.draw_byte( x, y, self.memory[(reading_address + i as u16) as usize])
+            {
                 pixel_was_erased = true;
             }
         }
 
         self.cpu_registers[0xF] = if pixel_was_erased { 1 } else {0};
+    }
+
+    // Draws byte
+    // Wraps around if needed
+    // Returns true if it cleared a pixel
+    fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool
+    {
+        let mut pixel_was_erased = false;
+        for i in 0..8 {
+            let index: usize = (y * 64 + x + i) as usize;
+            let pixel: u8 = self.gfx[index];
+            self.gfx[index] ^= if byte >> i == 1 { 255 } else { 0 };
+
+            if pixel == 255 && self.gfx[index] != 255
+            {
+                pixel_was_erased = true;
+            }
+        }
+
+        pixel_was_erased
     }
 
     // EX9E
@@ -558,7 +580,7 @@ impl Chip8 {
     fn store_registers(&mut self, value: u8)
     {
         validate_argument(value, 0xF);
-        for i in 0..(value - 1) {
+        for i in 0..value {
             let index = i as usize;
             let memory_location = (self.index_register as usize + index) as usize;
             self.memory[memory_location] = self.cpu_registers[index];
@@ -571,13 +593,12 @@ impl Chip8 {
     fn read_memory(&mut self, value: u8)
     {
         validate_argument(value, 0xF);
-        for i in 0..(value - 1) {
+        for i in 0..value {
             let index = i as usize;
             let memory_location = (self.index_register as usize + index) as usize;
             self.cpu_registers[index] = self.memory[memory_location];
         }
     }
-
 }
 
 #[cfg(test)]
