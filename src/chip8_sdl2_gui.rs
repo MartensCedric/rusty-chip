@@ -1,3 +1,4 @@
+use crate::chip8::Chip8;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -8,12 +9,12 @@ use std::env;
 use std::error::Error;
 use std::fs;
 use std::time::Duration;
-use crate::chip8::Chip8;
 
 const PIXEL_SIZE: u32 = 10;
 
 pub struct Config {
-    pub rom_filename: String
+    pub cartridge_rom_filename: String,
+    pub console_rom_filename: String,
 }
 
 impl Config {
@@ -22,16 +23,20 @@ impl Config {
             return Err("not enough arguments");
         }
 
-        let rom_filename = args[1].clone();
+        let cartridge_rom_filename = args[1].clone();
 
         Ok(Config {
-            rom_filename
+            cartridge_rom_filename,
+            String::from("console_rom.dat")
         })
     }
 }
 
 fn index_to_point(index: i32) -> Point {
-    Point::new((index % 64) * PIXEL_SIZE as i32, (index / 32) * PIXEL_SIZE as i32)
+    Point::new(
+        (index % 64) * PIXEL_SIZE as i32,
+        (index / 32) * PIXEL_SIZE as i32,
+    )
 }
 
 fn set_grid_index_color(canvas: &mut render::WindowCanvas, index: i32, alpha: u8) {
@@ -43,25 +48,36 @@ fn set_grid_index_color(canvas: &mut render::WindowCanvas, index: i32, alpha: u8
     }
 }
 
+use std::fs::File;
+use std::io::Read;
+
+fn get_file_as_byte_vec(filename: &str) -> Vec<u8> {
+    let mut f = File::open(&filename).expect("No file found");
+    let metadata = fs::metadata(&filename).expect("Unable to read metadata");
+    let mut buffer = vec![0; metadata.len() as usize];
+    f.read(&mut buffer).expect("buffer overflow");
+
+    buffer
+}
+
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     println!("Started rusty_chip!");
-    let chip8: Chip8 = Chip8::new();
+
+    let mut chip8: Chip8 = Chip8::new();
+    let console_rom: Vec<u8> = get_file_as_byte_vec("read_only_memory.dat");
+    chip8.initialize_read_only_memory(console_rom.iter().as_ref());
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window(
-            "Rusty Chip",
-            64 * PIXEL_SIZE,
-            32 * PIXEL_SIZE,
-        )
+        .window("Rusty Chip", 64 * PIXEL_SIZE, 32 * PIXEL_SIZE)
         .position_centered()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().build().unwrap();
 
-    // let contents = fs::read_to_string(config.rom_filename)?;
+    let rom_contents: Vec<u8> = get_file_as_byte_vec(&config.cartridge_rom_filename);
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut i = 0;
     'running: loop {

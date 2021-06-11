@@ -43,6 +43,15 @@ impl Chip8 {
         self.execute_instruction(opcode);
     }
 
+    pub fn initialize_read_only_memory(&mut self, read_only_memory: &[u8])
+    {
+        let rom_length = read_only_memory.len();
+        for i in 0..rom_length
+        {
+            self.memory[i as usize] = read_only_memory[i as usize];
+        }
+    }
+
     pub fn decrement_timers(&mut self)
     {
         self.delay_timer -= 1;
