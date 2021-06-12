@@ -617,9 +617,47 @@ mod tests {
         let mut c: Chip8 = Chip8::new();
         c.memory[c.program_counter as usize] = 0xA2;
         c.memory[(c.program_counter + 1) as usize] = 0xF0;
-        // should execute OPCODE A2F0
         c.fetch_cycle();
         assert_eq!(c.index_register, 0x02F0);
+    }
+
+    #[test]
+    pub fn draw_test() {
+        let mut c: Chip8 = Chip8::new();
+        let mut gfx: [u8; 64 * 32] = [0; 64 * 32];
+
+        assert_eq!(gfx.len(), c.gfx.len(), "Arrays don't have the same length");
+        assert!(
+            gfx.iter().zip(gfx.iter()).all(|(a, b)| a == b),
+            "Arrays are not equal"
+        );
+
+        c.memory[0x300] = 0xFF;
+        c.memory[0x301] = 0x55;
+
+        c.execute_instruction(0x6000);
+        c.execute_instruction(0x6100);
+        c.execute_instruction(0xA300);
+
+        c.execute_instruction(0xD012);
+
+        for i in 0..8 {
+            gfx[i] = 0xFF;
+        }
+
+        gfx[64] = 0;
+        gfx[65] = 0xFF;
+        gfx[66] = 0;
+        gfx[67] = 0xFF;
+        gfx[68] = 0;
+        gfx[69] = 0xFF;
+        gfx[70] = 0;
+        gfx[71] = 0xFF;
+
+        assert!(
+            gfx.iter().zip(c.gfx.iter()).all(|(a, b)| a == b),
+            "Arrays are not equal"
+        );
     }
 
     #[test]
@@ -651,17 +689,17 @@ mod tests {
     #[should_panic]
     pub fn bad_opcode_test() {
         let mut c: Chip8 = Chip8::new();
-        c.execute_instruction(0x69);
+        c.execute_instruction(0x68);
     }
 
     #[test]
     pub fn jump_to_address_plus_v0_test() {
         let mut c: Chip8 = Chip8::new();
-        c.cpu_registers[0] = 0x69;
+        c.cpu_registers[0] = 0x68;
         c.jump_to_address_plus_v0(0x0123);
-        assert_eq!(c.program_counter, 0x0123 + 0x69);
+        assert_eq!(c.program_counter, 0x0123 + 0x68);
         c.jump_to_address_plus_v0(0x0433);
-        assert_eq!(c.program_counter, 0x0433 + 0x69);
+        assert_eq!(c.program_counter, 0x0433 + 0x68);
     }
 
     #[test]
