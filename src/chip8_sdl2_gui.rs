@@ -8,6 +8,8 @@ use sdl2::video::Window;
 use std::env;
 use std::error::Error;
 use std::fs;
+use std::fs::File;
+use std::io::Read;
 use std::time::Duration;
 
 const PIXEL_SIZE: u32 = 10;
@@ -16,7 +18,6 @@ pub struct Config {
     pub cartridge_rom_filename: String,
     pub console_rom_filename: String,
 }
-
 impl Config {
     pub fn new(args: &[String]) -> Result<Config, &'static str> {
         if args.len() < 2 {
@@ -26,8 +27,8 @@ impl Config {
         let cartridge_rom_filename = args[1].clone();
 
         Ok(Config {
-            cartridge_rom_filename,
-            String::from("console_rom.dat")
+            cartridge_rom_filename: cartridge_rom_filename,
+            console_rom_filename: String::from("console_rom.dat"),
         })
     }
 }
@@ -48,12 +49,12 @@ fn set_grid_index_color(canvas: &mut render::WindowCanvas, index: i32, alpha: u8
     }
 }
 
-use std::fs::File;
-use std::io::Read;
-
 fn get_file_as_byte_vec(filename: &str) -> Vec<u8> {
-    let mut f = File::open(&filename).expect("No file found");
-    let metadata = fs::metadata(&filename).expect("Unable to read metadata");
+    let mut f = File::open(&filename).expect(&format!("File named {} was not found!", filename));
+    let metadata = fs::metadata(&filename).expect(&format!(
+        "Unable to read metadata for file named {}",
+        filename
+    ));
     let mut buffer = vec![0; metadata.len() as usize];
     f.read(&mut buffer).expect("buffer overflow");
 
@@ -64,7 +65,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     println!("Started rusty_chip!");
 
     let mut chip8: Chip8 = Chip8::new();
-    let console_rom: Vec<u8> = get_file_as_byte_vec("read_only_memory.dat");
+    let console_rom: Vec<u8> = get_file_as_byte_vec(&config.console_rom_filename);
     chip8.initialize_read_only_memory(console_rom.iter().as_ref());
 
     let sdl_context = sdl2::init().unwrap();
