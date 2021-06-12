@@ -262,7 +262,7 @@ impl Chip8 {
         if result > 255 {
             result -= 255;
         }
-        self.cpu_registers[reg_x as usize] += result as u8;
+        self.cpu_registers[reg_x as usize] = result as u8;
     }
 
     // 8XY0
@@ -475,12 +475,14 @@ impl Chip8 {
     // Returns true if it cleared a pixel
     fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool {
         let mut pixel_was_erased = false;
+        let index: usize = ((y as usize) * 64 + (x as usize)) as usize;
+        let index_bytes = index / 8;
+        println!("Drawing byte {:#X} at ({},{})", byte, x, y);
         for i in 0..8 {
-            let index: usize = ((y as usize) * 64 + (x as usize) + i) as usize;
-            let pixel: u8 = self.gfx[index];
-            self.gfx[index] ^= if byte >> i == 1 { 255 } else { 0 };
+            let pixel: u8 = self.gfx[index_bytes + i];
+            self.gfx[index_bytes + i] ^= if byte >> i == 1 { 255 } else { 0 };
 
-            if pixel == 255 && self.gfx[index] != 255 {
+            if pixel == 255 && self.gfx[index_bytes + i] != 255 {
                 pixel_was_erased = true;
             }
         }
