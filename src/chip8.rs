@@ -1,17 +1,14 @@
 use crate::chip8_util::validate_argument;
+use num::CheckedAdd;
 use num::CheckedSub;
-use num::{CheckedAdd, PrimInt};
 use rand::Rng;
-use std::fmt::Display;
-use std::fs::read;
-use std::ops::BitAnd;
 
 pub struct Chip8 {
     // We should break this into cohesive components
     memory: [u8; 4096],
     cpu_registers: [u8; 16],
     index_register: u16,
-    program_counter: usize,
+    program_counter: u16,
     pub gfx: [u8; 64 * 32],
     delay_timer: u8,
     sound_timer: u8,
@@ -36,19 +33,25 @@ impl Chip8 {
 
     pub fn fetch_cycle(&mut self) {
         let opcode: u16 = self.fetch_next();
+        println!("Executing opcode: {:#X}", opcode);
         self.execute_instruction(opcode);
     }
 
     pub fn init_memory(&mut self, read_only_memory: &[u8], start_index: usize) {
         let rom_length: usize = read_only_memory.len();
         for i in start_index..(start_index + rom_length) {
-            self.memory[i as usize] = read_only_memory[i as usize];
+            self.memory[i as usize] = read_only_memory[(i - start_index) as usize];
         }
     }
 
     pub fn decrement_timers(&mut self) {
-        self.delay_timer -= 1;
-        self.sound_timer -= 1;
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+
+        if self.sound_timer > 0 {
+            self.sound_timer -= 1;
+        }
     }
 
     pub fn is_sound_active(&self) -> bool {
@@ -81,12 +84,12 @@ impl Chip8 {
             0x6000 => self.set_register_value(
                 // XKK
                 ((opcode & 0xF00) >> 8) as u8,
-                ((opcode & 0x0FF) as u8),
+                (opcode & 0x0FF) as u8,
             ),
             0x7000 => self.add(
                 // XKK
                 ((opcode & 0xF00) >> 8) as u8,
-                ((opcode & 0x0FF) as u8),
+                (opcode & 0x0FF) as u8,
             ),
             0x8000 => match opcode & 0xF00F {
                 0x8000 => self.load(
@@ -153,9 +156,12 @@ impl Chip8 {
     }
 
     // essentially combine PC: u8 and PC+1: u8 into one u16 opcode to execute using bitshift ops
-    fn fetch_next(&self) -> u16 {
-        (self.memory[self.program_counter as usize] as u16) << 8
-            | self.memory[(self.program_counter + 1) as usize] as u16
+    fn fetch_next(&mut self) -> u16 {
+        let opcode: u16 = (self.memory[self.program_counter as usize] as u16) << 8
+            | self.memory[(self.program_counter + 1) as usize] as u16;
+
+        self.program_counter += 2;
+        opcode
     }
 
     //
@@ -195,7 +201,7 @@ impl Chip8 {
     // The interpreter increments the stack pointer,
     // then puts the current PC on the top of the stack. The PC is then set to nnn.
     fn call_address(&mut self, address: u16) {
-        self.stack_data.push(self.program_counter);
+        self.stack_data.push(self.program_counter as u16);
         self.program_counter = validate_argument(address, 0x0FFF);
     }
 
@@ -417,7 +423,7 @@ impl Chip8 {
     // Jumps to the address NNN plus V0..
     fn jump_to_address_plus_v0(&mut self, value: u16) {
         validate_argument(value, 0xFFF);
-        self.program_counter = (value + (self.cpu_registers[0] as u16)) as usize;
+        self.program_counter = value + (self.cpu_registers[0] as u16);
     }
 
     // CXNN
@@ -560,7 +566,7 @@ impl Chip8 {
         let value: u8 = self.cpu_registers[reg_x as usize];
         let hundreds: u8 = value / 100;
         let tens: u8 = (value - hundreds * 100) / 10;
-        let digits: u8 = ((value - hundreds * 100) - tens * 10);
+        let digits: u8 = (value - hundreds * 100) - tens * 10;
 
         let index: usize = self.index_register as usize;
         self.memory[index] = hundreds;

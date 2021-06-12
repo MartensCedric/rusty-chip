@@ -99,6 +99,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
             }
         }
 
+        chip8.decrement_timers();
         chip8.fetch_cycle();
 
         for (index, alpha) in chip8.gfx.iter().enumerate() {
