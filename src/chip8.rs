@@ -462,8 +462,8 @@ impl Chip8 {
 
         let mut pixel_was_erased: bool = false;
         for i in 0..bytes_to_read {
-            let y_wrapped = if y as u16 + i as u16 > 255 {
-                ((y as u16 + i as u16) - 255) as u8
+            let y_wrapped = if y as u16 + i as u16 >= 64 {
+                ((y as u16 + i as u16) % 64) as u8
             } else {
                 y + i
             };
@@ -485,14 +485,13 @@ impl Chip8 {
     // Returns true if it cleared a pixel
     fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool {
         let mut pixel_was_erased = false;
-        let index: usize = ((y as usize) * 64 + (x as usize)) as usize;
-        let index_bytes = index / 8;
+        let index: usize = ((y as usize) * 32 + (x as usize)) as usize;
         println!("Drawing byte {:#X} at ({},{})", byte, x, y);
         for i in 0..8 {
-            let pixel: u8 = self.gfx[index_bytes + i];
-            self.gfx[index_bytes + i] ^= if byte >> i == 1 { 255 } else { 0 };
+            let pixel: u8 = self.gfx[index + i];
+            self.gfx[index + i] ^= if ((byte >> (7 - i)) & 1) == 1 { 255 } else { 0 };
 
-            if pixel == 255 && self.gfx[index_bytes + i] != 255 {
+            if pixel == 255 && self.gfx[index + i] != 255 {
                 pixel_was_erased = true;
             }
         }
