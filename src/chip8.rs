@@ -63,6 +63,7 @@ impl Chip8 {
     fn execute_instruction(&mut self, opcode: u16) {
         match opcode & 0xF000 {
             0x0000 => match opcode {
+                0x000 => (), // Used for old machines, do nothing here.
                 0x0E0 => self.clear_screen(),
                 0x0EE => self.subroutine_return(),
                 _ => panic!("Unknown opcode: {}", opcode),
@@ -211,7 +212,7 @@ impl Chip8 {
     // increments the program counter by 2.
     fn skip_next_if_byte_is_vx(&mut self, reg_x: u8, byte_value: u8) {
         validate_argument(reg_x, 0xF);
-        validate_argument(byte_value, 0xF);
+        validate_argument(byte_value, 0xFF);
         if self.cpu_registers[reg_x as usize] == byte_value {
             self.program_counter += 2;
         }
@@ -223,7 +224,7 @@ impl Chip8 {
     // and if they are not equal, increments the program counter by 2.
     fn skip_next_if_byte_is_not_vx(&mut self, reg_x: u8, byte_value: u8) {
         validate_argument(reg_x, 0xF);
-        validate_argument(byte_value, 0xF);
+        validate_argument(byte_value, 0xFF);
         if self.cpu_registers[reg_x as usize] != byte_value {
             self.program_counter += 2;
         }
@@ -246,7 +247,7 @@ impl Chip8 {
     // The interpreter puts the value KK into register VX.
     fn set_register_value(&mut self, reg_x: u8, byte_value: u8) {
         validate_argument(reg_x, 0xF);
-        validate_argument(byte_value, 0xF);
+        validate_argument(byte_value, 0xFF);
         self.cpu_registers[reg_x as usize] = byte_value;
     }
 
@@ -255,8 +256,13 @@ impl Chip8 {
     // Adds the value kk to the value of register Vx, then stores the result in Vx.
     fn add(&mut self, reg_x: u8, byte_value: u8) {
         validate_argument(reg_x, 0xF);
-        validate_argument(byte_value, 0xF);
-        self.cpu_registers[reg_x as usize] += byte_value;
+        validate_argument(byte_value, 0xFF);
+
+        let mut result: u16 = byte_value as u16 + self.cpu_registers[reg_x as usize] as u16;
+        if result > 255 {
+            result -= 255;
+        }
+        self.cpu_registers[reg_x as usize] += result as u8;
     }
 
     // 8XY0
@@ -470,7 +476,7 @@ impl Chip8 {
     fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool {
         let mut pixel_was_erased = false;
         for i in 0..8 {
-            let index: usize = (y * 64 + x + i) as usize;
+            let index: usize = ((y as usize) * 64 + (x as usize) + i) as usize;
             let pixel: u8 = self.gfx[index];
             self.gfx[index] ^= if byte >> i == 1 { 255 } else { 0 };
 
