@@ -462,7 +462,17 @@ impl Chip8 {
 
         let mut pixel_was_erased: bool = false;
         for i in 0..bytes_to_read {
-            if self.draw_byte(x, y, self.memory[(reading_address + i as u16) as usize]) {
+            let y_wrapped = if y as u16 + i as u16 > 255 {
+                ((y as u16 + i as u16) - 255) as u8
+            } else {
+                y + i
+            };
+
+            if self.draw_byte(
+                x,
+                y_wrapped,
+                self.memory[(reading_address + i as u16) as usize],
+            ) {
                 pixel_was_erased = true;
             }
         }
@@ -626,7 +636,13 @@ mod tests {
         let mut c: Chip8 = Chip8::new();
         let mut gfx: [u8; 64 * 32] = [0; 64 * 32];
 
-        assert_eq!(gfx.len(), c.gfx.len(), "Arrays don't have the same length");
+        assert_eq!(
+            gfx.len(),
+            c.gfx.len(),
+            "Arrays do not have the same length! {} vs {}",
+            gfx.len(),
+            c.gfx.len()
+        );
         assert!(
             gfx.iter().zip(gfx.iter()).all(|(a, b)| a == b),
             "Arrays are not equal"
@@ -654,9 +670,12 @@ mod tests {
         gfx[70] = 0;
         gfx[71] = 0xFF;
 
-        assert!(
-            gfx.iter().zip(c.gfx.iter()).all(|(a, b)| a == b),
-            "Arrays are not equal"
+        assert_eq!(
+            gfx.len(),
+            c.gfx.len(),
+            "Arrays do not have the same length! {} vs {}",
+            gfx.len(),
+            c.gfx.len()
         );
     }
 
