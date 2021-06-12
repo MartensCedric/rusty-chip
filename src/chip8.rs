@@ -1,23 +1,21 @@
-use num::{CheckedAdd, PrimInt};
-use num::CheckedSub;
-use rand::Rng;
-use std::ops::BitAnd;
-use std::fmt::Display;
 use crate::chip8_util::validate_argument;
+use num::CheckedSub;
+use num::{CheckedAdd, PrimInt};
+use rand::Rng;
+use std::fmt::Display;
 use std::fs::read;
+use std::ops::BitAnd;
 
 pub struct Chip8 {
     // We should break this into cohesive components
     memory: [u8; 4096],
     cpu_registers: [u8; 16],
-    opcode: u8,
     index_register: u16,
-    program_counter: u16,
+    program_counter: usize,
     pub gfx: [u8; 64 * 32],
     delay_timer: u8,
     sound_timer: u8,
     stack_data: Vec<u16>,
-    sp: u16,
     key_states: u16,
 }
 
@@ -26,14 +24,12 @@ impl Chip8 {
         Chip8 {
             memory: [0; 4096],
             cpu_registers: [0; 16],
-            opcode: 0,
             index_register: 0,
             program_counter: 0x200, // CHIP8 expects PC to start at 0x200
             gfx: [0; 64 * 32],
             delay_timer: 0,
             sound_timer: 0,
             stack_data: vec![0; 16],
-            sp: 0,
             key_states: 0,
         }
     }
@@ -43,70 +39,87 @@ impl Chip8 {
         self.execute_instruction(opcode);
     }
 
-    pub fn initialize_read_only_memory(&mut self, read_only_memory: &[u8])
-    {
-        let rom_length = read_only_memory.len();
-        for i in 0..rom_length
-        {
+    pub fn init_memory(&mut self, read_only_memory: &[u8], start_index: usize) {
+        let rom_length: usize = read_only_memory.len();
+        for i in start_index..(start_index + rom_length) {
             self.memory[i as usize] = read_only_memory[i as usize];
         }
     }
 
-    pub fn decrement_timers(&mut self)
-    {
+    pub fn decrement_timers(&mut self) {
         self.delay_timer -= 1;
         self.sound_timer -= 1;
     }
 
-    pub fn is_sound_active(&self) -> bool
-    {
-        self.sound_timer >= 0
+    pub fn is_sound_active(&self) -> bool {
+        self.sound_timer > 0
     }
 
     // Executes the given opcode
     // Includes decoding and executing the given opcode
-    pub fn execute_instruction(&mut self, opcode: u16) {
+    fn execute_instruction(&mut self, opcode: u16) {
         match opcode & 0xF000 {
-            0x0000 => {
-                match opcode {
-                    0x0E0 => self.clear_screen(),
-                    0x0EE => self.subroutine_return(),
-                    _ => panic!("Unknown opcode: {}", opcode)
-                }
+            0x0000 => match opcode {
+                0x0E0 => self.clear_screen(),
+                0x0EE => self.subroutine_return(),
+                _ => panic!("Unknown opcode: {}", opcode),
             },
             0x1000 => self.jump_to_address(opcode & 0x0FFF),
             0x2000 => self.call_address(opcode & 0x0FFF),
             0x3000 => self.skip_next_if_byte_is_vx(
                 ((opcode & 0x0F00) >> 8) as u8, // XKK
-                (opcode & 0x0FF) as u8),
+                (opcode & 0x0FF) as u8,
+            ),
             0x4000 => self.skip_next_if_byte_is_not_vx(
                 ((opcode & 0x0F00) >> 8) as u8, // XKK
-                (opcode & 0x0FF) as u8),
+                (opcode & 0x0FF) as u8,
+            ),
             0x5000 => self.skip_next_if_vx_eql_vy(
                 ((opcode & 0xF00) >> 8) as u8, // XY0
-                ((opcode & 0x0F0) >> 4) as u8),
-            0x6000 => self.set_register_value(      // XKK
-                ((opcode & 0xF00) >> 8) as u8,
-                ((opcode & 0x0FF) as u8)
+                ((opcode & 0x0F0) >> 4) as u8,
             ),
-            0x7000 => self.add(      // XKK
+            0x6000 => self.set_register_value(
+                // XKK
                 ((opcode & 0xF00) >> 8) as u8,
-                ((opcode & 0x0FF) as u8)
+                ((opcode & 0x0FF) as u8),
             ),
-            0x8000 => {
-                match opcode & 0xF00F {
-                    0x8000 => self.load(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
-                    0x8001 => self.bit_or(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
-                    0x8002 => self.bit_and(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
-                    0x8003 => self.bit_xor(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
-                    0x8004 => self.add_registers(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
-                    0x8005 => self.sub_registers(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
-                    0x8006 => self.shift_right_register(((opcode & 0x0F00) >> 8) as u8),
-                    0x8007 => self.sub_registers_not(((opcode & 0x0F00) >> 8) as u8, ((opcode & 0x00F0) >> 4) as u8),
-                    0x800E => self.shift_left_register(((opcode & 0x0F00) >> 8) as u8),
-                    _ => panic!("Unknown opcode: {}", opcode)
-
-                }
+            0x7000 => self.add(
+                // XKK
+                ((opcode & 0xF00) >> 8) as u8,
+                ((opcode & 0x0FF) as u8),
+            ),
+            0x8000 => match opcode & 0xF00F {
+                0x8000 => self.load(
+                    ((opcode & 0x0F00) >> 8) as u8,
+                    ((opcode & 0x00F0) >> 4) as u8,
+                ),
+                0x8001 => self.bit_or(
+                    ((opcode & 0x0F00) >> 8) as u8,
+                    ((opcode & 0x00F0) >> 4) as u8,
+                ),
+                0x8002 => self.bit_and(
+                    ((opcode & 0x0F00) >> 8) as u8,
+                    ((opcode & 0x00F0) >> 4) as u8,
+                ),
+                0x8003 => self.bit_xor(
+                    ((opcode & 0x0F00) >> 8) as u8,
+                    ((opcode & 0x00F0) >> 4) as u8,
+                ),
+                0x8004 => self.add_registers(
+                    ((opcode & 0x0F00) >> 8) as u8,
+                    ((opcode & 0x00F0) >> 4) as u8,
+                ),
+                0x8005 => self.sub_registers(
+                    ((opcode & 0x0F00) >> 8) as u8,
+                    ((opcode & 0x00F0) >> 4) as u8,
+                ),
+                0x8006 => self.shift_right_register(((opcode & 0x0F00) >> 8) as u8),
+                0x8007 => self.sub_registers_not(
+                    ((opcode & 0x0F00) >> 8) as u8,
+                    ((opcode & 0x00F0) >> 4) as u8,
+                ),
+                0x800E => self.shift_left_register(((opcode & 0x0F00) >> 8) as u8),
+                _ => panic!("Unknown opcode: {}", opcode),
             },
             0xA000 => self.set_index_register(opcode & 0x0FFF),
             0xB000 => self.jump_to_address_plus_v0(opcode & 0x0FFF),
@@ -114,27 +127,24 @@ impl Chip8 {
             0xD000 => self.draw(
                 ((opcode & 0x0F00) >> 8) as u8,
                 ((opcode & 0x00F0) >> 4) as u8,
-                (opcode & 0xF) as u8),
-            0xE000 => {
-                match opcode & 0xF0FF {
-                    0xE09E => self.skip_if_key_down(((opcode & 0x0F00) >> 8) as u8),
-                    0xE0A1 => self.skip_if_key_up(((opcode & 0x0F00) >> 8) as u8),
-                    _ => panic!("Unknown opcode: {}", opcode)
-                }
+                (opcode & 0xF) as u8,
+            ),
+            0xE000 => match opcode & 0xF0FF {
+                0xE09E => self.skip_if_key_down(((opcode & 0x0F00) >> 8) as u8),
+                0xE0A1 => self.skip_if_key_up(((opcode & 0x0F00) >> 8) as u8),
+                _ => panic!("Unknown opcode: {}", opcode),
             },
-            0xF000 => {
-                match opcode & 0xF0FF {
-                    0xF007 => self.read_delay_timer(((opcode & 0x0F00) >> 8) as u8),
-                    0xF00A => self.wait_for_key(((opcode & 0x0F00) >> 8) as u8),
-                    0xF015 => self.set_delay_timer(((opcode & 0x0F00) >> 8) as u8),
-                    0xF018 => self.set_sound_timer(((opcode & 0x0F00) >> 8) as u8),
-                    0xF01E => self.index_reg_add(((opcode & 0x0F00) >> 8) as u8),
-                    0xF029 => self.set_index_to_character_address(((opcode & 0x0F00) >> 8) as u8),
-                    0xF033 => self.store_bcd(((opcode & 0x0F00) >> 8) as u8),
-                    0xF055 => self.store_registers(((opcode & 0x0F00) >> 8) as u8),
-                    0xF065 => self.read_memory(((opcode & 0x0F00) >> 8) as u8),
-                    _ => panic!("Unknown opcode: {}", opcode)
-                }
+            0xF000 => match opcode & 0xF0FF {
+                0xF007 => self.read_delay_timer(((opcode & 0x0F00) >> 8) as u8),
+                0xF00A => self.wait_for_key(((opcode & 0x0F00) >> 8) as u8),
+                0xF015 => self.set_delay_timer(((opcode & 0x0F00) >> 8) as u8),
+                0xF018 => self.set_sound_timer(((opcode & 0x0F00) >> 8) as u8),
+                0xF01E => self.index_reg_add(((opcode & 0x0F00) >> 8) as u8),
+                0xF029 => self.set_index_to_character_address(((opcode & 0x0F00) >> 8) as u8),
+                0xF033 => self.store_bcd(((opcode & 0x0F00) >> 8) as u8),
+                0xF055 => self.store_registers(((opcode & 0x0F00) >> 8) as u8),
+                0xF065 => self.read_memory(((opcode & 0x0F00) >> 8) as u8),
+                _ => panic!("Unknown opcode: {}", opcode),
             },
             _ => {
                 panic!("Unknown opcode: {}", opcode);
@@ -143,8 +153,7 @@ impl Chip8 {
     }
 
     // essentially combine PC: u8 and PC+1: u8 into one u16 opcode to execute using bitshift ops
-    fn fetch_next(&self) -> u16
-    {
+    fn fetch_next(&self) -> u16 {
         (self.memory[self.program_counter as usize] as u16) << 8
             | self.memory[(self.program_counter + 1) as usize] as u16
     }
@@ -169,8 +178,8 @@ impl Chip8 {
             Some(x) => {
                 self.program_counter = *x;
                 self.stack_data.pop();
-            },
-            None => panic!("Nothing in the stack!")
+            }
+            None => panic!("Nothing in the stack!"),
         }
     }
 
@@ -185,8 +194,7 @@ impl Chip8 {
     // Call subroutine at nnn.
     // The interpreter increments the stack pointer,
     // then puts the current PC on the top of the stack. The PC is then set to nnn.
-    fn call_address(&mut self, address: u16)
-    {
+    fn call_address(&mut self, address: u16) {
         self.stack_data.push(self.program_counter);
         self.program_counter = validate_argument(address, 0x0FFF);
     }
@@ -195,13 +203,11 @@ impl Chip8 {
     // Skip next instruction if VX = KK.
     // The interpreter compares register Vx to kk, and if they are equal,
     // increments the program counter by 2.
-    // [todo: I incremented the program counter by 1, to be examined more]
-    fn skip_next_if_byte_is_vx(&mut self, reg_x: u8, byte_value: u8)
-    {
+    fn skip_next_if_byte_is_vx(&mut self, reg_x: u8, byte_value: u8) {
         validate_argument(reg_x, 0xF);
         validate_argument(byte_value, 0xF);
         if self.cpu_registers[reg_x as usize] == byte_value {
-            self.program_counter += 1;
+            self.program_counter += 2;
         }
     }
 
@@ -209,13 +215,11 @@ impl Chip8 {
     // Skip next instruction if Vx != kk.
     // The interpreter compares register Vx to kk,
     // and if they are not equal, increments the program counter by 2.
-    // todo: see todo in 3XKK
-    fn skip_next_if_byte_is_not_vx(&mut self, reg_x: u8, byte_value: u8)
-    {
+    fn skip_next_if_byte_is_not_vx(&mut self, reg_x: u8, byte_value: u8) {
         validate_argument(reg_x, 0xF);
         validate_argument(byte_value, 0xF);
         if self.cpu_registers[reg_x as usize] != byte_value {
-            self.program_counter += 1;
+            self.program_counter += 2;
         }
     }
 
@@ -223,21 +227,18 @@ impl Chip8 {
     // Skip next instruction if Vx = Vy.
     // The interpreter compares register Vx to register Vy, and if they are equal,
     // increments the program counter by 2.
-    // todo: see todo in 3XKK
-    fn skip_next_if_vx_eql_vy(&mut self, reg_x: u8, reg_y: u8)
-    {
+    fn skip_next_if_vx_eql_vy(&mut self, reg_x: u8, reg_y: u8) {
         validate_argument(reg_x, 0xF);
         validate_argument(reg_y, 0xF);
         if self.cpu_registers[reg_x as usize] == self.cpu_registers[reg_y as usize] {
-            self.program_counter += 1;
+            self.program_counter += 2;
         }
     }
 
     // 6XKK
     // Set VX = KK.
     // The interpreter puts the value KK into register VX.
-    fn set_register_value(&mut self, reg_x: u8, byte_value: u8)
-    {
+    fn set_register_value(&mut self, reg_x: u8, byte_value: u8) {
         validate_argument(reg_x, 0xF);
         validate_argument(byte_value, 0xF);
         self.cpu_registers[reg_x as usize] = byte_value;
@@ -246,8 +247,7 @@ impl Chip8 {
     // 7XKK
     // Set Vx = Vx + kk.
     // Adds the value kk to the value of register Vx, then stores the result in Vx.
-    fn add(&mut self, reg_x: u8, byte_value: u8)
-    {
+    fn add(&mut self, reg_x: u8, byte_value: u8) {
         validate_argument(reg_x, 0xF);
         validate_argument(byte_value, 0xF);
         self.cpu_registers[reg_x as usize] += byte_value;
@@ -342,12 +342,14 @@ impl Chip8 {
     // Set Vx = Vx SHR 1.
     // If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0.
     // Then Vx is divided by 2.
-    fn shift_right_register(&mut self, reg_x: u8)
-    {
+    fn shift_right_register(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xF);
         self.cpu_registers[reg_x as usize] = {
-            if self.cpu_registers[reg_x as usize] & 1 == 1
-            { 1 } else { 0 }
+            if self.cpu_registers[reg_x as usize] & 1 == 1 {
+                1
+            } else {
+                0
+            }
         };
         self.cpu_registers[reg_x as usize] >>= 1;
     }
@@ -380,12 +382,14 @@ impl Chip8 {
     // 8XYE
     // Set Vx = Vx SHL 1.
     // If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
-    fn shift_left_register(&mut self, reg_x: u8)
-    {
+    fn shift_left_register(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xF);
         self.cpu_registers[reg_x as usize] = {
-            if self.cpu_registers[reg_x as usize] & 1 == 1
-            { 1 } else { 0 }
+            if self.cpu_registers[reg_x as usize] & 1 == 1 {
+                1
+            } else {
+                0
+            }
         };
         self.cpu_registers[reg_x as usize] <<= 1;
     }
@@ -394,13 +398,11 @@ impl Chip8 {
     // Skip next instruction if Vx != Vy.
     // The values of Vx and Vy are compared, and if they are not equal,
     // the program counter is increased by 2.
-    // todo: see 3XKK
-    fn skip_next_if_vx_not_eql_vy(&mut self, reg_x: u8, reg_y: u8)
-    {
+    fn skip_next_if_vx_not_eql_vy(&mut self, reg_x: u8, reg_y: u8) {
         validate_argument(reg_x, 0xF);
         validate_argument(reg_y, 0xF);
         if self.cpu_registers[reg_x as usize] != self.cpu_registers[reg_y as usize] {
-            self.program_counter += 1;
+            self.program_counter += 2;
         }
     }
 
@@ -415,7 +417,7 @@ impl Chip8 {
     // Jumps to the address NNN plus V0..
     fn jump_to_address_plus_v0(&mut self, value: u16) {
         validate_argument(value, 0xFFF);
-        self.program_counter = value + (self.cpu_registers[0] as u16);
+        self.program_counter = (value + (self.cpu_registers[0] as u16)) as usize;
     }
 
     // CXNN
@@ -437,8 +439,7 @@ impl Chip8 {
     // If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
     // If the sprite is positioned so part of it is outside the coordinates of the display,
     // it wraps around to the opposite side of the screen.
-    fn draw(&mut self, reg_x: u8, reg_y: u8, bytes_to_read: u8)
-    {
+    fn draw(&mut self, reg_x: u8, reg_y: u8, bytes_to_read: u8) {
         validate_argument(reg_x, 0xFF);
         validate_argument(reg_y, 0xFF);
 
@@ -449,28 +450,25 @@ impl Chip8 {
 
         let mut pixel_was_erased: bool = false;
         for i in 0..bytes_to_read {
-            if self.draw_byte( x, y, self.memory[(reading_address + i as u16) as usize])
-            {
+            if self.draw_byte(x, y, self.memory[(reading_address + i as u16) as usize]) {
                 pixel_was_erased = true;
             }
         }
 
-        self.cpu_registers[0xF] = if pixel_was_erased { 1 } else {0};
+        self.cpu_registers[0xF] = if pixel_was_erased { 1 } else { 0 };
     }
 
     // Draws byte
     // Wraps around if needed
     // Returns true if it cleared a pixel
-    fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool
-    {
+    fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool {
         let mut pixel_was_erased = false;
         for i in 0..8 {
             let index: usize = (y * 64 + x + i) as usize;
             let pixel: u8 = self.gfx[index];
             self.gfx[index] ^= if byte >> i == 1 { 255 } else { 0 };
 
-            if pixel == 255 && self.gfx[index] != 255
-            {
+            if pixel == 255 && self.gfx[index] != 255 {
                 pixel_was_erased = true;
             }
         }
@@ -482,12 +480,10 @@ impl Chip8 {
     // Skip next instruction if key with the value of Vx is pressed.
     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in
     // the down position, PC is increased by 2.
-    // todo: see 3XKK
-    fn skip_if_key_down(&mut self, key: u8)
-    {
+    fn skip_if_key_down(&mut self, key: u8) {
         let is_key_pressed = false;
         if is_key_pressed {
-            self.program_counter += 1;
+            self.program_counter += 2;
         }
     }
 
@@ -495,20 +491,17 @@ impl Chip8 {
     // Skip next instruction if key with the value of Vx is not pressed.
     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in
     // the up position, PC is increased by 2.
-    // todo: see 3XKK
-    fn skip_if_key_up(&mut self, key: u8)
-    {
+    fn skip_if_key_up(&mut self, key: u8) {
         let is_key_pressed = false;
         if !is_key_pressed {
-            self.program_counter += 1;
+            self.program_counter += 2;
         }
     }
 
     // FX07
     // Set Vx = delay timer value.
     // The value of DT is placed into Vx.
-    fn read_delay_timer(&mut self, reg_x: u8)
-    {
+    fn read_delay_timer(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xFF);
         self.cpu_registers[reg_x as usize] = self.delay_timer;
     }
@@ -516,8 +509,7 @@ impl Chip8 {
     // FX0A
     // Wait for a key press, store the value of the key in Vx.
     // All execution stops until a key is pressed, then the value of that key is stored in Vx.
-    fn wait_for_key(&mut self, reg_x: u8)
-    {
+    fn wait_for_key(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xFF);
         panic!("wait_for_key not implemented!");
         let key_pressed = 0;
@@ -527,8 +519,7 @@ impl Chip8 {
     // FX15
     // Set delay timer = Vx.
     // DT is set equal to the value of Vx.
-    fn set_delay_timer(&mut self, reg_x: u8)
-    {
+    fn set_delay_timer(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xFF);
         self.delay_timer = self.cpu_registers[reg_x as usize];
     }
@@ -536,8 +527,7 @@ impl Chip8 {
     // FX18
     // Set sound timer = Vx.
     // ST is set equal to the value of Vx.
-    fn set_sound_timer(&mut self, reg_x: u8)
-    {
+    fn set_sound_timer(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xFF);
         self.sound_timer = self.cpu_registers[reg_x as usize];
     }
@@ -545,8 +535,7 @@ impl Chip8 {
     // FX1E
     // Set I = I + Vx.
     // The values of I and Vx are added, and the results are stored in I.
-    fn index_reg_add(&mut self, reg_x: u8)
-    {
+    fn index_reg_add(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xFF);
         self.index_register = self.cpu_registers[reg_x as usize] as u16;
     }
@@ -556,20 +545,17 @@ impl Chip8 {
     // The value of I is set to the location for the hexadecimal sprite corresponding
     // to the value of Vx.
     // This points to the reserved memory from the file read_only_memory.dat
-    fn set_index_to_character_address(&mut self, value: u8)
-    {
+    fn set_index_to_character_address(&mut self, value: u8) {
         validate_argument(value, 0xF);
         let address: u16 = (value * 12) as u16;
         self.index_register = address;
     }
 
-
     // FX33
     // Store BCD representation of Vx in memory locations I, I+1, and I+2.
     // The interpreter takes the decimal value of Vx, and places the hundreds digit in memory
     // at location in I, the tens digit at location I+1, and the ones digit at location I+2.
-    fn store_bcd(&mut self, reg_x: u8)
-    {
+    fn store_bcd(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xFF);
         let value: u8 = self.cpu_registers[reg_x as usize];
         let hundreds: u8 = value / 100;
@@ -586,8 +572,7 @@ impl Chip8 {
     // Store registers V0 through Vx in memory starting at location I.
     // The interpreter copies the values of registers V0 through Vx into memory,
     // starting at the address in I.
-    fn store_registers(&mut self, value: u8)
-    {
+    fn store_registers(&mut self, value: u8) {
         validate_argument(value, 0xF);
         for i in 0..value {
             let index = i as usize;
@@ -599,8 +584,7 @@ impl Chip8 {
     // FX65
     // Read registers V0 through Vx from memory starting at location I.
     // The interpreter reads values from memory starting at location I into registers V0 through Vx.
-    fn read_memory(&mut self, value: u8)
-    {
+    fn read_memory(&mut self, value: u8) {
         validate_argument(value, 0xF);
         for i in 0..value {
             let index = i as usize;
@@ -672,7 +656,6 @@ mod tests {
         c.set_index_register(100 as u16);
         assert_eq!(c.index_register, 100);
     }
-
 
     #[test]
     pub fn add_test() {

@@ -66,7 +66,10 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
     let mut chip8: Chip8 = Chip8::new();
     let console_rom: Vec<u8> = get_file_as_byte_vec(&config.console_rom_filename);
-    chip8.initialize_read_only_memory(console_rom.iter().as_ref());
+    chip8.init_memory(console_rom.iter().as_ref(), 0x0);
+
+    let cartridge_rom: Vec<u8> = get_file_as_byte_vec(&config.cartridge_rom_filename);
+    chip8.init_memory(cartridge_rom.iter().as_ref(), 0x200);
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -78,17 +81,12 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
     let mut canvas = window.into_canvas().build().unwrap();
 
-    let rom_contents: Vec<u8> = get_file_as_byte_vec(&config.cartridge_rom_filename);
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut i = 0;
     'running: loop {
         i = (i + 1) % 255;
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
-
-        for (index, alpha) in chip8.gfx.iter().enumerate() {
-            set_grid_index_color(&mut canvas, index as i32, *alpha);
-        }
 
         for event in event_pump.poll_iter() {
             match event {
@@ -99,6 +97,12 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
                 } => break 'running,
                 _ => {}
             }
+        }
+
+        chip8.fetch_cycle();
+
+        for (index, alpha) in chip8.gfx.iter().enumerate() {
+            set_grid_index_color(&mut canvas, index as i32, *alpha);
         }
 
         canvas.present();
