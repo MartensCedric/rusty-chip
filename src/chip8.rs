@@ -167,6 +167,7 @@ impl Chip8 {
             | self.memory[(self.program_counter + 1) as usize] as u16;
 
         self.program_counter += 2;
+
         opcode
     }
 
@@ -207,7 +208,7 @@ impl Chip8 {
     // The interpreter increments the stack pointer,
     // then puts the current PC on the top of the stack. The PC is then set to nnn.
     fn call_address(&mut self, address: u16) {
-        self.stack_data.push(self.program_counter as u16);
+        self.stack_data.push((self.program_counter) as u16);
         self.program_counter = validate_argument(address, 0x0FFF);
     }
 
@@ -578,8 +579,9 @@ impl Chip8 {
     // The value of I is set to the location for the hexadecimal sprite corresponding
     // to the value of Vx.
     // This points to the reserved memory from the file read_only_memory.dat
-    fn set_index_to_character_address(&mut self, value: u8) {
-        validate_argument(value, 0xF);
+    fn set_index_to_character_address(&mut self, reg_x: u8) {
+        validate_argument(reg_x, 0xF);
+        let value: u8 = self.cpu_registers[reg_x as usize];
         let address: u16 = (value * 5) as u16;
         self.index_register = address;
     }
