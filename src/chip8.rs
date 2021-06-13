@@ -509,8 +509,9 @@ impl Chip8 {
     // Skip next instruction if key with the value of Vx is pressed.
     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in
     // the down position, PC is increased by 2.
-    fn skip_if_key_down(&mut self, key: u8) {
-        validate_argument(key, 0xF);
+    fn skip_if_key_down(&mut self, reg_x: u8) {
+        validate_argument(reg_x, 0xF);
+        let key: u8 = self.cpu_registers[reg_x as usize];
         let is_key_pressed = (self.key_states >> (15 - key)) & 0x1 == 1;
         if is_key_pressed {
             self.program_counter += 2;
@@ -521,8 +522,9 @@ impl Chip8 {
     // Skip next instruction if key with the value of Vx is not pressed.
     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in
     // the up position, PC is increased by 2.
-    fn skip_if_key_up(&mut self, key: u8) {
-        validate_argument(key, 0xF);
+    fn skip_if_key_up(&mut self, reg_x: u8) {
+        validate_argument(reg_x, 0xF);
+        let key: u8 = self.cpu_registers[reg_x as usize];
         let is_key_pressed = (self.key_states >> (15 - key)) & 0x1 == 1;
         if !is_key_pressed {
             self.program_counter += 2;
@@ -739,19 +741,6 @@ mod tests {
         let mut c: Chip8 = Chip8::new();
         c.set_index_register(100 as u16);
         assert_eq!(c.index_register, 100);
-    }
-
-    #[test]
-    pub fn set_index_to_character_address_test() {
-        let mut c: Chip8 = Chip8::new();
-        c.set_index_to_character_address(0);
-        assert_eq!(c.index_register, 0);
-
-        c.set_index_to_character_address(1);
-        assert_eq!(c.index_register, 5);
-
-        c.set_index_to_character_address(2);
-        assert_eq!(c.index_register, 10);
     }
 
     #[test]
