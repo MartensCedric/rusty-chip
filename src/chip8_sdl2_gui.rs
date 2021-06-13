@@ -36,7 +36,7 @@ impl Config {
 fn index_to_point(index: i32) -> Point {
     Point::new(
         (index % 64) * PIXEL_SIZE as i32,
-        (index / 32) * PIXEL_SIZE as i32,
+        (index / 64) * PIXEL_SIZE as i32,
     )
 }
 

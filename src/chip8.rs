@@ -485,8 +485,11 @@ impl Chip8 {
     // Returns true if it cleared a pixel
     fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool {
         let mut pixel_was_erased = false;
-        let index: usize = ((y as usize) * 32 + (x as usize)) as usize;
-        println!("Drawing byte {:#X} at ({},{})", byte, x, y);
+        let index: usize = ((y as usize) * 64 + (x as usize)) as usize;
+        println!(
+            "Drawing byte {:#X} at ({},{}), this is index {}",
+            byte, x, y, index
+        );
         for i in 0..8 {
             let pixel: u8 = self.gfx[index + i];
             self.gfx[index + i] ^= if ((byte >> (7 - i)) & 1) == 1 { 255 } else { 0 };
@@ -597,7 +600,7 @@ impl Chip8 {
     // starting at the address in I.
     fn store_registers(&mut self, value: u8) {
         validate_argument(value, 0xF);
-        for i in 0..value {
+        for i in 0..(value + 1) {
             let index = i as usize;
             let memory_location = (self.index_register as usize + index) as usize;
             self.memory[memory_location] = self.cpu_registers[index];
@@ -650,10 +653,12 @@ mod tests {
         c.memory[0x300] = 0xFF;
         c.memory[0x301] = 0x55;
 
+        c.execute_instruction(0x60FF);
+        c.execute_instruction(0x6155);
+        c.execute_instruction(0xA300);
+        c.execute_instruction(0xF155);
         c.execute_instruction(0x6000);
         c.execute_instruction(0x6100);
-        c.execute_instruction(0xA300);
-
         c.execute_instruction(0xD012);
 
         for i in 0..8 {
