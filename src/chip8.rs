@@ -4,16 +4,16 @@ use num::CheckedSub;
 use rand::Rng;
 
 pub struct Chip8 {
-    // We should break this into cohesive components
     memory: [u8; 4096],
-    cpu_registers: [u8; 16],
+    pub cpu_registers: [u8; 16],
     index_register: u16,
     program_counter: u16,
     pub gfx: [u8; 64 * 32],
     delay_timer: u8,
     sound_timer: u8,
     stack_data: Vec<u16>,
-    key_states: u16,
+    pub key_states: u16,
+    pub wait_key_state: u8,
 }
 
 impl Chip8 {
@@ -28,6 +28,7 @@ impl Chip8 {
             sound_timer: 0,
             stack_data: vec![0; 16],
             key_states: 0,
+            wait_key_state: 0xF0,
         }
     }
 
@@ -508,7 +509,8 @@ impl Chip8 {
     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in
     // the down position, PC is increased by 2.
     fn skip_if_key_down(&mut self, key: u8) {
-        let is_key_pressed = false;
+        validate_argument(key, 0xF);
+        let is_key_pressed = (self.key_states >> (15 - key)) & 0x1 == 1;
         if is_key_pressed {
             self.program_counter += 2;
         }
@@ -519,7 +521,8 @@ impl Chip8 {
     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in
     // the up position, PC is increased by 2.
     fn skip_if_key_up(&mut self, key: u8) {
-        let is_key_pressed = false;
+        validate_argument(key, 0xF);
+        let is_key_pressed = (self.key_states >> (15 - key)) & 0x1 == 1;
         if !is_key_pressed {
             self.program_counter += 2;
         }
@@ -537,10 +540,13 @@ impl Chip8 {
     // Wait for a key press, store the value of the key in Vx.
     // All execution stops until a key is pressed, then the value of that key is stored in Vx.
     fn wait_for_key(&mut self, reg_x: u8) {
-        validate_argument(reg_x, 0xFF);
-        panic!("wait_for_key not implemented!");
-        let key_pressed = 0;
-        self.cpu_registers[reg_x as usize] = key_pressed;
+        validate_argument(reg_x, 0x0F);
+
+        // if the first four bits of wait_key_state are smaller than 0xF then
+        // it is waiting for a key to be put in a register of that value
+        // This is not part of the chip8 specification, simply a way to avoid dependency or
+        // lifetime issues
+        self.wait_key_state = reg_x;
     }
 
     // FX15

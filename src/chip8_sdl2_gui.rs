@@ -80,25 +80,106 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut canvas = window.into_canvas().build().unwrap();
 
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut i = 0;
+
     'running: loop {
-        i = (i + 1) % 255;
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
+        chip8.key_states = 0;
+
+        let is_ticking: bool = chip8.wait_key_state & 0xF0 == 0xF0;
+        if is_ticking {
+            chip8.decrement_timers();
+        }
 
         for event in event_pump.poll_iter() {
+            // http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#2.3
+            // TODO: Take this logic out in another function, find a way to clean this
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num0),
+                    ..
+                } => chip8.key_states |= 0x8000,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num1),
+                    ..
+                } => chip8.key_states |= 0x4000,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num2),
+                    ..
+                } => chip8.key_states |= 0x2000,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num3),
+                    ..
+                } => chip8.key_states |= 0x1000,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num4),
+                    ..
+                } => chip8.key_states |= 0x0800,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num5),
+                    ..
+                } => chip8.key_states |= 0x0400,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num6),
+                    ..
+                } => chip8.key_states |= 0x0200,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num7),
+                    ..
+                } => chip8.key_states |= 0x0100,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num8),
+                    ..
+                } => chip8.key_states |= 0x0080,
+                Event::KeyDown {
+                    keycode: Some(Keycode::Num9),
+                    ..
+                } => chip8.key_states |= 0x0040,
+                Event::KeyDown {
+                    keycode: Some(Keycode::A),
+                    ..
+                } => chip8.key_states |= 0x0020,
+                Event::KeyDown {
+                    keycode: Some(Keycode::B),
+                    ..
+                } => chip8.key_states |= 0x0010,
+                Event::KeyDown {
+                    keycode: Some(Keycode::C),
+                    ..
+                } => chip8.key_states |= 0x0008,
+                Event::KeyDown {
+                    keycode: Some(Keycode::D),
+                    ..
+                } => chip8.key_states |= 0x0004,
+                Event::KeyDown {
+                    keycode: Some(Keycode::E),
+                    ..
+                } => chip8.key_states |= 0x0002,
+                Event::KeyDown {
+                    keycode: Some(Keycode::F),
+                    ..
+                } => chip8.key_states |= 0x0001,
                 _ => {}
             }
         }
 
-        chip8.decrement_timers();
-        chip8.fetch_cycle();
+        if !is_ticking {
+            for i in 0..16 {
+                if (chip8.key_states >> (15 - i)) & 1 == 1 {
+                    chip8.cpu_registers[chip8.wait_key_state as usize] = i as u8;
+                    chip8.wait_key_state = 0xF0;
+                }
+            }
+        }
+
+        if is_ticking {
+            chip8.fetch_cycle();
+        }
 
         for (index, alpha) in chip8.gfx.iter().enumerate() {
             set_grid_index_color(&mut canvas, index as i32, *alpha);
