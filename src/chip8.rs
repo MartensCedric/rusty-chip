@@ -573,7 +573,7 @@ impl Chip8 {
     // This points to the reserved memory from the file read_only_memory.dat
     fn set_index_to_character_address(&mut self, value: u8) {
         validate_argument(value, 0xF);
-        let address: u16 = (value * 12) as u16;
+        let address: u16 = (value * 5) as u16;
         self.index_register = address;
     }
 
@@ -730,6 +730,19 @@ mod tests {
         let mut c: Chip8 = Chip8::new();
         c.set_index_register(100 as u16);
         assert_eq!(c.index_register, 100);
+    }
+
+    #[test]
+    pub fn set_index_to_character_address_test() {
+        let mut c: Chip8 = Chip8::new();
+        c.set_index_to_character_address(0);
+        assert_eq!(c.index_register, 0);
+
+        c.set_index_to_character_address(1);
+        assert_eq!(c.index_register, 5);
+
+        c.set_index_to_character_address(2);
+        assert_eq!(c.index_register, 10);
     }
 
     #[test]
