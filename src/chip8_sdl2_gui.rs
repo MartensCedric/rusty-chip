@@ -4,8 +4,6 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::rect::{Point, Rect};
 use sdl2::render;
-use sdl2::video::Window;
-use std::env;
 use std::error::Error;
 use std::fs;
 use std::fs::File;

@@ -125,6 +125,10 @@ impl Chip8 {
                 0x800E => self.shift_left_register(((opcode & 0x0F00) >> 8) as u8),
                 _ => panic!("Unknown opcode: {}", opcode),
             },
+            0x9000 => self.skip_next_if_vx_not_eql_vy(
+                ((opcode & 0x0F00) >> 8) as u8,
+                ((opcode & 0x00F0) >> 4) as u8,
+            ),
             0xA000 => self.set_index_register(opcode & 0x0FFF),
             0xB000 => self.jump_to_address_plus_v0(opcode & 0x0FFF),
             0xC000 => self.set_rand(((opcode & 0x0F00) >> 8) as u8, (opcode & 0x0FF) as u8),
@@ -462,15 +466,12 @@ impl Chip8 {
 
         let mut pixel_was_erased: bool = false;
         for i in 0..bytes_to_read {
-            let y_wrapped = if y as u16 + i as u16 >= 64 {
-                ((y as u16 + i as u16) % 64) as u8
-            } else {
-                y + i
-            };
+            let mut y_wrapped: u16 = y as u16 + i as u16;
+            y_wrapped %= 32;
 
             if self.draw_byte(
                 x,
-                y_wrapped,
+                y_wrapped as u8,
                 self.memory[(reading_address + i as u16) as usize],
             ) {
                 pixel_was_erased = true;

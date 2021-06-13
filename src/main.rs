@@ -13,5 +13,12 @@ fn main() {
         process::exit(1);
     });
 
-    chip8_sdl2_gui::run(config);
+    match chip8_sdl2_gui::run(config) {
+        Ok(_x) => {
+            println!("Thank for playing!");
+        }
+        Err(x) => {
+            println!("Error while running SDL2_GUI: {}", x);
+        }
+    }
 }
