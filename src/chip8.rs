@@ -125,7 +125,10 @@ impl Chip8 {
                     ((opcode & 0x0F00) >> 8) as u8,
                     ((opcode & 0x00F0) >> 4) as u8,
                 ),
-                0x800E => self.shift_left_register(((opcode & 0x0F00) >> 8) as u8),
+                0x800E => self.shift_left_register(
+                    ((opcode & 0x0F00) >> 8) as u8,
+                    ((opcode & 0x00F0) >> 4) as u8,
+                ),
                 _ => panic!("Unknown opcode: {}", opcode),
             },
             0x9000 => self.skip_next_if_vx_not_eql_vy(
@@ -364,7 +367,7 @@ impl Chip8 {
     // Then Vx is divided by 2.
     fn shift_right_register(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xF);
-        self.cpu_registers[reg_x as usize] = {
+        self.cpu_registers[0xF] = {
             if self.cpu_registers[reg_x as usize] & 1 == 1 {
                 1
             } else {
@@ -402,16 +405,17 @@ impl Chip8 {
     // 8XYE
     // Set Vx = Vx SHL 1.
     // If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
-    fn shift_left_register(&mut self, reg_x: u8) {
+    fn shift_left_register(&mut self, reg_x: u8, reg_y: u8) {
         validate_argument(reg_x, 0xF);
-        self.cpu_registers[reg_x as usize] = {
-            if self.cpu_registers[reg_x as usize] & 1 == 1 {
+        validate_argument(reg_y, 0xF);
+        self.cpu_registers[0xF] = {
+            if (self.cpu_registers[reg_x as usize] >> 7) & 1 == 1 {
                 1
             } else {
                 0
             }
         };
-        self.cpu_registers[reg_x as usize] <<= 1;
+        self.cpu_registers[reg_x as usize] = self.cpu_registers[reg_y as usize] << 1;
     }
 
     // 9XY0
@@ -582,7 +586,6 @@ impl Chip8 {
     // Set I = location of sprite for digit Vx.
     // The value of I is set to the location for the hexadecimal sprite corresponding
     // to the value of Vx.
-    // This points to the reserved memory from the file read_only_memory.dat
     fn set_index_to_character_address(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xF);
         let value: u8 = self.cpu_registers[reg_x as usize];
@@ -599,8 +602,8 @@ impl Chip8 {
         validate_argument(reg_x, 0xFF);
         let value: u8 = self.cpu_registers[reg_x as usize];
         let hundreds: u8 = value / 100;
-        let tens: u8 = (value - hundreds * 100) / 10;
-        let digits: u8 = (value - hundreds * 100) - tens * 10;
+        let tens: u8 = (value % 100) / 10;
+        let digits: u8 = value % 10;
 
         let index: usize = self.index_register as usize;
         self.memory[index] = hundreds;
@@ -633,7 +636,6 @@ impl Chip8 {
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
