@@ -81,10 +81,11 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
+    chip8.key_states = 0;
+
     'running: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
-        chip8.key_states = 0;
 
         let is_ticking: bool = chip8.wait_key_state & 0xF0 == 0xF0;
         if is_ticking {
@@ -164,6 +165,70 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
                     keycode: Some(Keycode::F),
                     ..
                 } => chip8.key_states |= 0x0001,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num0),
+                    ..
+                } => chip8.key_states &= !0x8000,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num1),
+                    ..
+                } => chip8.key_states &= !0x4000,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num2),
+                    ..
+                } => chip8.key_states &= !0x2000,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num3),
+                    ..
+                } => chip8.key_states &= !0x1000,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num4),
+                    ..
+                } => chip8.key_states &= !0x0800,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num5),
+                    ..
+                } => chip8.key_states &= !0x0400,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num6),
+                    ..
+                } => chip8.key_states &= !0x0200,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num7),
+                    ..
+                } => chip8.key_states &= !0x0100,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num8),
+                    ..
+                } => chip8.key_states &= !0x0080,
+                Event::KeyUp {
+                    keycode: Some(Keycode::Num9),
+                    ..
+                } => chip8.key_states &= !0x0040,
+                Event::KeyUp {
+                    keycode: Some(Keycode::A),
+                    ..
+                } => chip8.key_states &= !0x0020,
+                Event::KeyUp {
+                    keycode: Some(Keycode::B),
+                    ..
+                } => chip8.key_states &= !0x0010,
+                Event::KeyUp {
+                    keycode: Some(Keycode::C),
+                    ..
+                } => chip8.key_states &= !0x0008,
+                Event::KeyUp {
+                    keycode: Some(Keycode::D),
+                    ..
+                } => chip8.key_states &= !0x0004,
+                Event::KeyUp {
+                    keycode: Some(Keycode::E),
+                    ..
+                } => chip8.key_states &= !0x0002,
+                Event::KeyUp {
+                    keycode: Some(Keycode::F),
+                    ..
+                } => chip8.key_states &= !0x0001,
                 _ => {}
             }
         }
@@ -186,7 +251,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
         }
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 300));
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 1000));
     }
     Ok(())
 }

@@ -34,7 +34,7 @@ impl Chip8 {
 
     pub fn fetch_cycle(&mut self) {
         let opcode: u16 = self.fetch_next();
-        println!("Executing opcode: {:#X}", opcode);
+        // println!("Executing opcode: {:#X}", opcode);
         self.execute_instruction(opcode);
     }
 
@@ -489,10 +489,10 @@ impl Chip8 {
     fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool {
         let mut pixel_was_erased = false;
         let index: usize = ((y as usize) * 64 + (x as usize)) as usize;
-        println!(
-            "Drawing byte {:#X} at ({},{}), this is index {}",
-            byte, x, y, index
-        );
+        // println!(
+        //     "Drawing byte {:#X} at ({},{}), this is index {}",
+        //     byte, x, y, index
+        // );
         for i in 0..8 {
             let pixel: u8 = self.gfx[index + i];
             self.gfx[index + i] ^= if ((byte >> (7 - i)) & 1) == 1 { 255 } else { 0 };
@@ -584,6 +584,7 @@ impl Chip8 {
     fn set_index_to_character_address(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xF);
         let value: u8 = self.cpu_registers[reg_x as usize];
+        validate_argument(value, 0xF);
         let address: u16 = (value * 5) as u16;
         self.index_register = address;
     }
