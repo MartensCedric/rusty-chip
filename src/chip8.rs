@@ -35,6 +35,8 @@ impl Chip8 {
     pub fn fetch_cycle(&mut self) {
         let opcode: u16 = self.fetch_next();
         // println!("Executing opcode: {:#X}", opcode);
+        // println!("index_register: {:#X}", self.index_register);
+        // println!("cpu: {:#?}", self.cpu_registers);
         self.execute_instruction(opcode);
     }
 
@@ -573,7 +575,7 @@ impl Chip8 {
     // The values of I and Vx are added, and the results are stored in I.
     fn index_reg_add(&mut self, reg_x: u8) {
         validate_argument(reg_x, 0xFF);
-        self.index_register = self.cpu_registers[reg_x as usize] as u16;
+        self.index_register += self.cpu_registers[reg_x as usize] as u16;
     }
 
     // FX29
@@ -624,7 +626,7 @@ impl Chip8 {
     // The interpreter reads values from memory starting at location I into registers V0 through Vx.
     fn read_memory(&mut self, value: u8) {
         validate_argument(value, 0xF);
-        for i in 0..value {
+        for i in 0..(value + 1) {
             let index = i as usize;
             let memory_location = (self.index_register as usize + index) as usize;
             self.cpu_registers[index] = self.memory[memory_location];
