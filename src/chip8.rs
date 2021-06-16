@@ -492,10 +492,6 @@ impl Chip8 {
     fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool {
         let mut pixel_was_erased = false;
         let index: usize = ((y as usize) * 64 + (x as usize)) as usize;
-        println!(
-            "Drawing byte {:#X} at ({},{}), this is index {}",
-            byte, x, y, index
-        );
         for i in 0..8 {
             let next_index: usize = ((index as u16 + i as u16) % 2048) as usize;
             let pixel: u8 = self.gfx[next_index];
