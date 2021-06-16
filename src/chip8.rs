@@ -34,9 +34,6 @@ impl Chip8 {
 
     pub fn fetch_cycle(&mut self) {
         let opcode: u16 = self.fetch_next();
-        println!("Executing opcode: {:#X}", opcode);
-        println!("index_register: {:#X}", self.index_register);
-        println!("cpu: {:#?}", self.cpu_registers);
         self.execute_instruction(opcode);
     }
 
