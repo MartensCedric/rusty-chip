@@ -34,9 +34,9 @@ impl Chip8 {
 
     pub fn fetch_cycle(&mut self) {
         let opcode: u16 = self.fetch_next();
-        // println!("Executing opcode: {:#X}", opcode);
-        // println!("index_register: {:#X}", self.index_register);
-        // println!("cpu: {:#?}", self.cpu_registers);
+        println!("Executing opcode: {:#X}", opcode);
+        println!("index_register: {:#X}", self.index_register);
+        println!("cpu: {:#?}", self.cpu_registers);
         self.execute_instruction(opcode);
     }
 
@@ -271,7 +271,7 @@ impl Chip8 {
 
         let mut result: u16 = byte_value as u16 + self.cpu_registers[reg_x as usize] as u16;
         if result > 255 {
-            result -= 255;
+            result -= 256;
         }
         self.cpu_registers[reg_x as usize] = result as u8;
     }
@@ -495,15 +495,16 @@ impl Chip8 {
     fn draw_byte(&mut self, x: u8, y: u8, byte: u8) -> bool {
         let mut pixel_was_erased = false;
         let index: usize = ((y as usize) * 64 + (x as usize)) as usize;
-        // println!(
-        //     "Drawing byte {:#X} at ({},{}), this is index {}",
-        //     byte, x, y, index
-        // );
+        println!(
+            "Drawing byte {:#X} at ({},{}), this is index {}",
+            byte, x, y, index
+        );
         for i in 0..8 {
-            let pixel: u8 = self.gfx[index + i];
-            self.gfx[index + i] ^= if ((byte >> (7 - i)) & 1) == 1 { 255 } else { 0 };
+            let next_index: usize = ((index as u16 + i as u16) % 2048) as usize;
+            let pixel: u8 = self.gfx[next_index];
+            self.gfx[next_index] ^= if ((byte >> (7 - i)) & 1) == 1 { 255 } else { 0 };
 
-            if pixel == 255 && self.gfx[index + i] != 255 {
+            if pixel == 255 && self.gfx[next_index] != 255 {
                 pixel_was_erased = true;
             }
         }
